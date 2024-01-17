@@ -1,0 +1,42 @@
+{
+  "name": "@logicalmind/lang",
+  "version": "1.0.0",
+  "description": "prolog family language",
+  "source": "./src/index.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.mjs",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    "import": "./dist/esm/index.mjs",
+    "require": "./dist/cjs/index.js"
+  },
+  "files": [
+    "dist/cjs",
+    "dist/esm",
+    "dist/types"
+  ],
+  "scripts": {
+    "build": "parcel build",
+    "test": "tape"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jichang/logicalmind.git"
+  },
+  "keywords": [
+    "language"
+  ],
+  "author": "Ji Chang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jichang/logicalmind/issues"
+  },
+  "homepage": "https://github.com/jichang/logicalmind#readme",
+  "devDependencies": {
+    "@parcel/packager-ts": "^2.11.0",
+    "@parcel/transformer-typescript-types": "^2.11.0",
+    "parcel": "^2.11.0",
+    "tape": "^5.7.3",
+    "typescript": "^5.3.3"
+  }
+}

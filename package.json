@@ -1,0 +1,27 @@
+{
+  "name": "logicalmind",
+  "version": "1.0.0",
+  "description": "Training to have logical mind",
+  "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --ws"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jichang/logicalmind.git"
+  },
+  "keywords": [
+    "Logical",
+    "Prolog"
+  ],
+  "author": "Ji Chang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jichang/logicalmind/issues"
+  },
+  "homepage": "https://github.com/jichang/logicalmind#readme",
+  "devDependencies": {}
+}
