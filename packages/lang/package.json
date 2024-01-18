@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "parcel build",
-    "test": "tape"
+    "test": "jest --passWithNoTests"
   },
   "repository": {
     "type": "git",
@@ -33,10 +33,14 @@
   },
   "homepage": "https://github.com/jichang/logicalmind#readme",
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@parcel/packager-ts": "^2.11.0",
     "@parcel/transformer-typescript-types": "^2.11.0",
+    "@types/jest": "^29.5.11",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "parcel": "^2.11.0",
-    "tape": "^5.7.3",
+    "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"
   }
 }
