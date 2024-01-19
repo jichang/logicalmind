@@ -20,6 +20,14 @@ export function failure<E, V>(e: E): Result<E, V> {
   }
 }
 
+export function isResultError<E, V>(result: Result<E, V>): result is ResultError<E> {
+  return result.kind === 'Error';
+}
+
+export function isResultValue<E, V>(result: Result<E, V>): result is ResultValue<V> {
+  return result.kind === 'Value';
+}
+
 export function success<E, V>(v: V): Result<E, V> {
   return {
     kind: 'Value',

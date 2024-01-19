@@ -1,10 +1,10 @@
-import { failure, success } from './result';
+import { failure, isResultError, isResultValue, success } from './result';
 
 describe('Result', () => {
   it('failure should return value with kind error', () => {
     const error = new Error('');
     const result = failure(error);
-    expect(result.kind).toBe('Error');
+    expect(isResultError(result)).toBe(true);
     // @ts-ignore
     expect(result.error).toBe(error);
   })
@@ -12,7 +12,7 @@ describe('Result', () => {
   it('success should return value with kind error', () => {
     const error = new Error('');
     const result = success(error);
-    expect(result.kind).toBe('Value');
+    expect(isResultValue(result)).toBe(true);
     // @ts-ignore
     expect(result.value).toBe(error);
   })

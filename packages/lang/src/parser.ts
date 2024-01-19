@@ -1,15 +1,16 @@
-import { Result, failure, success } from "./result";
+import { isVariable } from "./common";
+import { Result, failure, isResultError, success } from "./result";
 import { Stream } from "./stream";
 
 export interface Token {
   value: string;
-  offset: number;
+  position: number;
 }
 
 export enum AtomKind {
   Identifier,
   Variable,
-  Expr
+  Tuple
 }
 
 export type Atom = {
@@ -19,23 +20,22 @@ export type Atom = {
   kind: AtomKind.Variable,
   token: Token;
 } | {
-  kind: AtomKind.Expr,
-  expr: Expr
-}
-
-export interface Expr {
+  kind: AtomKind.Tuple,
   atoms: Atom[]
 }
 
 export enum ParserErrorCode {
   LiteralIsNull = 0,
-  LiteralShouldStartWithDoulbeQuotation,
-  LiteralShouldEndWithDoulbeQuotation,
+  LiteralNotStartWithDoulbeQuotation,
+  LiteralNotEndWithDoulbeQuotation,
   LiteralContainsInvalidEscapeLetter,
   SymbolIsNull = 0,
-  SymbolShouldStartWithNormalLetter,
-  SymbolShouldEndWithNormalLetter,
+  SymbolNotStartWithNormalLetter,
+  SymbolNotEndWithNormalLetter,
   SymbolContainsInvalidLetter,
+  TupleIsNull = 0,
+  TupleNotStartWithLeftSquare,
+  TupleNotEndWithRightSquare,
 }
 
 export class ParserError extends Error {
@@ -54,56 +54,54 @@ export class Parser {
       return failure(error);
     }
 
-    switch (head) {
-      case '"': {
-        let collect = (literal: string): ParserResult<string> => {
-          const head = stream.peek();
-          if (!head) {
-            const error = new ParserError(ParserErrorCode.LiteralShouldEndWithDoulbeQuotation, stream.position, ['"'], head);
-            return failure(error);
-          }
+    if (head !== '"') {
+      const error = new ParserError(ParserErrorCode.LiteralNotStartWithDoulbeQuotation, stream.position, ['"'], head);
+      return failure(error);
+    }
 
-          switch (head) {
-            case '"': {
-              stream.forward();
-              return success(literal);
-            }
-            case '\\': {
-              let next = stream.peek(1);
-              switch (next) {
-                case '\f':
-                case '\n':
-                case '\r':
-                case '\t':
-                case '\v':
-                case '\'':
-                case '\"':
-                case '\\':
-                  stream.forward(2);
-                  return collect(literal + next);
-                default: {
-                  const error = new ParserError(ParserErrorCode.LiteralContainsInvalidEscapeLetter, stream.position, ['\f', '\n', '\r', '\t', '\v', '\'', '\"', '\\'], next);
-                  return failure(error);
-                }
-              }
-            }
-            default:
-              stream.forward();
-              return collect(literal + head);
-          }
-        }
+    stream.forward();
 
-        stream.forward(1);
-        return collect("");
-      }
-      default: {
-        const error = new ParserError(ParserErrorCode.LiteralShouldStartWithDoulbeQuotation, stream.position, ['"'], head);
+    let collect = (literal: string): ParserResult<string> => {
+      const head = stream.peek();
+      if (!head) {
+        const error = new ParserError(ParserErrorCode.LiteralNotEndWithDoulbeQuotation, stream.position, ['"'], head);
         return failure(error);
       }
+
+      switch (head) {
+        case '"': {
+          stream.forward();
+          return success(literal);
+        }
+        case '\\': {
+          let next = stream.peek(1);
+          switch (next) {
+            case '\f':
+            case '\n':
+            case '\r':
+            case '\t':
+            case '\v':
+            case '\'':
+            case '\"':
+            case '\\':
+              stream.forward(2);
+              return collect(literal + next);
+            default: {
+              const error = new ParserError(ParserErrorCode.LiteralContainsInvalidEscapeLetter, stream.position, ['\f', '\n', '\r', '\t', '\v', '\'', '\"', '\\'], next);
+              return failure(error);
+            }
+          }
+        }
+        default:
+          stream.forward();
+          return collect(literal + head);
+      }
     }
+
+    return collect("");
   }
 
-  parseSymbol(stream: Stream) {
+  parseSymbol(stream: Stream): ParserResult<string> {
     const head = stream.peek();
     if (!head) {
       const error = new ParserError(ParserErrorCode.SymbolIsNull, stream.position, [], "");
@@ -113,35 +111,175 @@ export class Parser {
     let collect = (symbol: string): ParserResult<string> => {
       const head = stream.peek();
       if (!head) {
-        stream.forward();
         return success(symbol);
       }
 
       switch (head) {
         case '(':
         case '"': {
-          const error = new ParserError(ParserErrorCode.SymbolShouldStartWithNormalLetter, stream.position, [], head);
+          const error = new ParserError(ParserErrorCode.SymbolContainsInvalidLetter, stream.position, [], head);
           return failure(error);
         }
-        case ')':
+        case ')': {
+          return success(symbol);
+        }
         case ' ':
         case '\t':
         case '\r':
-        case '\n':
+        case '\n': {
           stream.forward();
           return success(symbol);
-        default:
+        }
+        default: {
           stream.forward();
           return collect(symbol + head);
+        }
       }
     }
 
     return collect("");
   }
 
-  parseAtom() { }
+  parseTuple(stream: Stream): ParserResult<Atom[]> {
+    const head = stream.peek();
+    if (!head) {
+      const error = new ParserError(ParserErrorCode.TupleIsNull, stream.position, ['('], "");
+      return failure(error);
+    }
 
-  parseExpr() { }
+    if (head !== '(') {
+      const error = new ParserError(ParserErrorCode.TupleNotStartWithLeftSquare, stream.position, ['('], head);
+      return failure(error);
+    }
 
-  parse(stream: Stream) { }
+    stream.forward();
+
+    let collect = (atoms: Atom[]): ParserResult<Atom[]> => {
+      const head = stream.peek();
+      if (!head) {
+        const error = new ParserError(ParserErrorCode.TupleNotEndWithRightSquare, stream.position, [')'], head);
+        return failure(error);
+      }
+
+      switch (head) {
+        case '(': {
+          const result = this.parseTuple(stream);
+          if (isResultError(result)) {
+            return result;
+          } else {
+            return collect([...atoms, { kind: AtomKind.Tuple, atoms: result.value }])
+          }
+        }
+        case ')': {
+          stream.forward();
+          return success(atoms);
+        }
+        case '"': {
+          const position = stream.position;
+          const result = this.parseLiteral(stream);
+          if (isResultError(result)) {
+            return result;
+          } else {
+            const value = result.value;
+            const token = {
+              value,
+              position
+            };
+            return collect([...atoms, { kind: AtomKind.Identifier, token }])
+          }
+        }
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n':
+          stream.forward();
+          return collect(atoms);
+        default:
+          {
+            const position = stream.position;
+            const result = this.parseSymbol(stream);
+            if (isResultError(result)) {
+              return result;
+            } else {
+              const value = result.value;
+              const token = {
+                value,
+                position
+              };
+              if (isVariable(value)) {
+                return collect([...atoms, { kind: AtomKind.Variable, token }])
+              } else {
+                return collect([...atoms, { kind: AtomKind.Identifier, token }])
+              }
+            }
+          }
+      }
+    }
+
+    return collect([]);
+  }
+
+  parse(stream: Stream, atoms: Atom[] = []): ParserResult<Atom[]> {
+    const head = stream.peek();
+    if (!head) {
+      return success(atoms);
+    }
+
+    switch (head) {
+      case '(': {
+        const result = this.parseTuple(stream);
+        if (isResultError(result)) {
+          return result;
+        } else {
+          const atom: Atom = {
+            kind: AtomKind.Tuple,
+            atoms: result.value
+          };
+
+          return this.parse(stream, [...atoms, atom]);
+        }
+      }
+      case '"': {
+        const position = stream.position;
+        const result = this.parseLiteral(stream);
+        if (isResultError(result)) {
+          return result;
+        } else {
+          const atom: Atom = {
+            kind: AtomKind.Identifier,
+            token: {
+              position,
+              value: result.value
+            }
+          };
+
+          return this.parse(stream, [...atoms, atom]);
+        }
+      }
+      case ' ':
+      case '\t':
+      case '\r':
+      case '\n': {
+        stream.forward();
+        return this.parse(stream, atoms);
+      }
+      default: {
+        const position = stream.position;
+        const result = this.parseSymbol(stream);
+        if (isResultError(result)) {
+          return result;
+        } else {
+          const atom: Atom = {
+            kind: isVariable(result.value) ? AtomKind.Variable : AtomKind.Identifier,
+            token: {
+              position,
+              value: result.value
+            }
+          };
+
+          return this.parse(stream, [...atoms, atom]);
+        }
+      }
+    }
+  }
 }
