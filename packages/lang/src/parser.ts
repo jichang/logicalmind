@@ -31,7 +31,11 @@ export enum ParserErrorCode {
   LiteralIsNull = 0,
   LiteralShouldStartWithDoulbeQuotation,
   LiteralShouldEndWithDoulbeQuotation,
-  LiteralContainsInvalidEscapeLetter
+  LiteralContainsInvalidEscapeLetter,
+  SymbolIsNull = 0,
+  SymbolShouldStartWithNormalLetter,
+  SymbolShouldEndWithNormalLetter,
+  SymbolContainsInvalidLetter,
 }
 
 export class ParserError extends Error {
@@ -44,7 +48,7 @@ export type ParserResult<V> = Result<ParserError, V>;
 
 export class Parser {
   parseLiteral(stream: Stream): ParserResult<string> {
-    let head = stream.peek();
+    const head = stream.peek();
     if (!head) {
       const error = new ParserError(ParserErrorCode.LiteralIsNull, stream.position, ['"'], "");
       return failure(error);
@@ -97,6 +101,42 @@ export class Parser {
         return failure(error);
       }
     }
+  }
+
+  parseSymbol(stream: Stream) {
+    const head = stream.peek();
+    if (!head) {
+      const error = new ParserError(ParserErrorCode.SymbolIsNull, stream.position, [], "");
+      return failure(error);
+    }
+
+    let collect = (symbol: string): ParserResult<string> => {
+      const head = stream.peek();
+      if (!head) {
+        stream.forward();
+        return success(symbol);
+      }
+
+      switch (head) {
+        case '(':
+        case '"': {
+          const error = new ParserError(ParserErrorCode.SymbolShouldStartWithNormalLetter, stream.position, [], head);
+          return failure(error);
+        }
+        case ')':
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n':
+          stream.forward();
+          return success(symbol);
+        default:
+          stream.forward();
+          return collect(symbol + head);
+      }
+    }
+
+    return collect("");
   }
 
   parseAtom() { }

@@ -54,4 +54,34 @@ describe('Parser', () => {
     expect(result.kind).toBe('Value');
     expect(result.value).toBe('\\a');
   })
+
+  it('parseSymbol should return error when stream is end', () => {
+    const stream = new Stream('', 0);
+    const parser = new Parser();
+    const result = parser.parseSymbol(stream) as ResultError<ParserError>;
+    expect(result.kind).toBe('Error');
+    expect(result.error.code).toBe(ParserErrorCode.SymbolIsNull);
+    expect(result.error.position).toBe(0);
+    expect(result.error.expected.length).toBe(0);
+    expect(result.error.actual).toBe('');
+  })
+
+  it('parseSymbol should return error when stream is start with "', () => {
+    const stream = new Stream('"ab', 0);
+    const parser = new Parser();
+    const result = parser.parseSymbol(stream) as ResultError<ParserError>;
+    expect(result.kind).toBe('Error');
+    expect(result.error.code).toBe(ParserErrorCode.SymbolShouldStartWithNormalLetter);
+    expect(result.error.position).toBe(0);
+    expect(result.error.expected.length).toBe(0);
+    expect(result.error.actual).toBe('"');
+  })
+
+  it('parseSymbol should return success when stream is well formed', () => {
+    const stream = new Stream('abc', 0);
+    const parser = new Parser();
+    const result = parser.parseSymbol(stream) as ResultValue<string>;
+    expect(result.kind).toBe('Value');
+    expect(result.value).toBe('abc');
+  })
 })
