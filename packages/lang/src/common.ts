@@ -4,3 +4,9 @@ export function isVariable(value: string) {
 
   return firstChar.toUpperCase() === firstChar && firstChar !== firstChar.toLowerCase();
 }
+
+export function equalTo<T>(a: T) {
+  return (b: T) => {
+    return a === b;
+  }
+}
