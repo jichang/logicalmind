@@ -1,5 +1,5 @@
-import { Atom, AtomKind } from "./parser";
-import { Result, failure, success } from "./result";
+import { Atom, AtomKind, Identifier, Tuple, Variable } from "./parser";
+import { Result, failure, isResultError, success } from "./result";
 
 export enum Tag {
   Declare = 0,
@@ -30,6 +30,10 @@ export class Clause {
     public hgs: number[] = [],
     public xs: number[] = []
   ) { }
+
+  static empty() {
+    return new Clause();
+  }
 }
 
 export class Program {
@@ -38,14 +42,23 @@ export class Program {
     public symbols: number[] = [],
     public clauses: Map<string, Clause[]> = new Map(),
   ) { }
+
+
+  static empty() {
+    return new Program();
+  }
+
+  append(program: Program) { }
 }
 
 export enum CompilerErrorCode {
   Unknown = 0,
-  WrongFormat = 1,
-  NullOrEmptyTerm = 2,
-  TupleAsFunctor = 3,
-  VariableAsFunctor = 4
+  IdentifierAsClause,
+  VariableAsClause,
+  WrongFormat,
+  EmptyTerm,
+  TupleAsFunctor,
+  VariableAsFunctor
 }
 
 export class CompilerError extends Error {
@@ -56,15 +69,68 @@ export class CompilerError extends Error {
 
 export type CompilerResult<V> = Result<CompilerError, V>;
 
-export function parseFunctorName(atom: Atom): CompilerResult<string> {
-  switch (atom.kind) {
-    case AtomKind.Identifier:
-      return success(atom.token.value);
-    case AtomKind.Variable:
-      return failure(new CompilerError(CompilerErrorCode.VariableAsFunctor, atom));
-    case AtomKind.Tuple:
-      return failure(new CompilerError(CompilerErrorCode.TupleAsFunctor, atom));
+export class Compiler {
+  parseFunctorName(atom: Atom): CompilerResult<string> {
+    switch (atom.kind) {
+      case AtomKind.Identifier:
+        return success(atom.token.value);
+      case AtomKind.Variable:
+        return failure(new CompilerError(CompilerErrorCode.VariableAsFunctor, atom));
+      case AtomKind.Tuple:
+        return failure(new CompilerError(CompilerErrorCode.TupleAsFunctor, atom));
+    }
+  }
+
+  composeClauseKey(functorName: string, arity: number) {
+    return `${functorName}/${arity}`;
+  }
+
+  compileIdentifierClause(atom: Identifier): CompilerResult<Program> {
+    const error = new CompilerError(CompilerErrorCode.IdentifierAsClause, atom)
+    return failure(error);
+  }
+
+  compileVariableClause(atom: Variable): CompilerResult<Program> {
+    const error = new CompilerError(CompilerErrorCode.VariableAsClause, atom)
+    return failure(error);
+  }
+
+  compileTupleClause(atom: Tuple): CompilerResult<Program> {
+    const len = atom.atoms.length;
+    if (len === 0) {
+    } else {
+    }
+    const error = new CompilerError(CompilerErrorCode.VariableAsClause, atom)
+    return failure(error);
+  }
+
+  compileClause(atom: Atom): CompilerResult<Program> {
+    switch (atom.kind) {
+      case AtomKind.Identifier:
+        return this.compileIdentifierClause(atom);
+      case AtomKind.Variable:
+        return this.compileVariableClause(atom);
+      case AtomKind.Tuple:
+        return this.compileTupleClause(atom);
+    }
+  }
+
+  compile(atoms: Atom[]): CompilerResult<Program> {
+    const initial: CompilerResult<Program> = success(Program.empty());
+    return atoms.reduce((lastResult: CompilerResult<Program>, atom) => {
+      if (isResultError(lastResult)) {
+        return lastResult;
+      }
+      const program = lastResult.value;
+
+      const result = this.compileClause(atom);
+      if (isResultError(result)) {
+        return result;
+      }
+
+      program.append(result.value)
+
+      return success(program)
+    }, initial);
   }
 }
-
-export function compile() { }

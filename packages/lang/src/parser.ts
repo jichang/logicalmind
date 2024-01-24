@@ -13,16 +13,22 @@ export enum AtomKind {
   Tuple
 }
 
-export type Atom = {
+export interface Identifier {
   kind: AtomKind.Identifier,
   token: Token;
-} | {
+}
+
+export interface Variable {
   kind: AtomKind.Variable,
   token: Token;
-} | {
+}
+
+export interface Tuple {
   kind: AtomKind.Tuple,
   atoms: Atom[]
 }
+
+export type Atom = Identifier | Variable | Tuple
 
 export enum ParserErrorCode {
   LiteralIsNull = 0,
@@ -61,7 +67,7 @@ export class Parser {
 
     stream.forward();
 
-    let collect = (literal: string): ParserResult<string> => {
+    const collect = (literal: string): ParserResult<string> => {
       const head = stream.peek();
       if (!head) {
         const error = new ParserError(ParserErrorCode.LiteralNotEndWithDoulbeQuotation, stream.position, ['"'], head);
@@ -74,7 +80,7 @@ export class Parser {
           return success(literal);
         }
         case '\\': {
-          let next = stream.peek(1);
+          const next = stream.peek(1);
           switch (next) {
             case '\f':
             case '\n':
@@ -108,7 +114,7 @@ export class Parser {
       return failure(error);
     }
 
-    let collect = (symbol: string): ParserResult<string> => {
+    const collect = (symbol: string): ParserResult<string> => {
       const head = stream.peek();
       if (!head) {
         return success(symbol);
@@ -154,7 +160,7 @@ export class Parser {
 
     stream.forward();
 
-    let collect = (atoms: Atom[]): ParserResult<Atom[]> => {
+    const collect = (atoms: Atom[]): ParserResult<Atom[]> => {
       const head = stream.peek();
       if (!head) {
         const error = new ParserError(ParserErrorCode.TupleNotEndWithRightSquare, stream.position, [')'], head);
