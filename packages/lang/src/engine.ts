@@ -1,1 +1,3 @@
-export function run() { }
+import { Program } from "./program";
+
+export function run(program: Program) { }

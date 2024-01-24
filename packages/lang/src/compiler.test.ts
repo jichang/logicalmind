@@ -1,5 +1,6 @@
-import { Clause, Compiler, CompilerError, CompilerErrorCode, Program } from "./compiler";
-import { Atom, Parser } from "./parser";
+import { Compiler, CompilerError, CompilerErrorCode } from "./compiler";
+import { Atom, Parser, Tuple } from "./parser";
+import { Program, Clause } from "./program";
 import { ResultError, ResultValue } from "./result";
 import { Stream } from "./stream";
 
@@ -72,5 +73,35 @@ describe('Compiler', () => {
     expect(clause.hgs.length).toBe(1);
     expect(clause.hgs[0]).toBe(0);
     expect(clause.xs.length).toBe(0);
+  });
+
+  it('should return error when functor is variable', () => {
+    const code = "(A)";
+    const stream = new Stream(code, 0);
+    const parser = new Parser();
+    const parserResult = parser.parse(stream) as ResultValue<Atom[]>;
+    expect(parserResult.value.length).toBe(1);
+    const atoms = parserResult.value;
+    const compiler = new Compiler();
+    const compilerResult = compiler.compile(atoms) as ResultError<CompilerError>;
+    const error = compilerResult.error;
+    expect(error.code).toBe(CompilerErrorCode.VariableAsFunctor);
+    const tuple = atoms[0] as Tuple;
+    expect(error.atom).toBe(tuple.atoms[0]);
+  });
+
+  it('should return error when functor is tuple', () => {
+    const code = "(())";
+    const stream = new Stream(code, 0);
+    const parser = new Parser();
+    const parserResult = parser.parse(stream) as ResultValue<Atom[]>;
+    expect(parserResult.value.length).toBe(1);
+    const atoms = parserResult.value;
+    const compiler = new Compiler();
+    const compilerResult = compiler.compile(atoms) as ResultError<CompilerError>;
+    const error = compilerResult.error;
+    expect(error.code).toBe(CompilerErrorCode.TupleAsFunctor);
+    const tuple = atoms[0] as Tuple;
+    expect(error.atom).toBe(tuple.atoms[0]);
   });
 })
