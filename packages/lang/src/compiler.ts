@@ -1,3 +1,4 @@
+import { equalTo } from "./common";
 import { Atom, AtomKind, Identifier, Tuple, Variable } from "./parser";
 import { Result, failure, isResultError, success } from "./result";
 
@@ -39,7 +40,7 @@ export class Clause {
 export class Program {
   constructor(
     public cells: number[] = [],
-    public symbols: number[] = [],
+    public symbols: string[] = [],
     public clauses: Map<string, Clause[]> = new Map(),
   ) { }
 
@@ -48,7 +49,50 @@ export class Program {
     return new Program();
   }
 
+  addClause(key: string, clause: Clause) {
+    const clauses = this.clauses.get(key);
+    if (!clauses) {
+      this.clauses.set(key, [clause]);
+    } else {
+      clauses.push(clause);
+    }
+  }
+
+  findSymbol(symbol: string) {
+    return this.symbols.findIndex(equalTo(symbol));
+  }
+
+  addSymbol(symbol: string) {
+    const index = this.symbols.findIndex(equalTo(symbol));
+    if (index === -1) {
+      this.symbols.push(symbol);
+    }
+  }
+
+  addCells(cells: number[]) {
+    this.cells.push(...cells);
+  }
+
   append(program: Program) { }
+
+  print() {
+    console.log('cells: ');
+    for (const cell of this.cells) {
+      console.log(`${cell}: ${tagOf(cell)} ${unmask(cell)}`);
+    }
+    console.log('symbols: ');
+    for (const symbol of this.symbols) {
+      console.log(symbol);
+    }
+    console.log('clauses: ');
+    for (const value of this.clauses) {
+      const [key, clauses] = value;
+      console.log(key);
+      for (const clause of clauses) {
+        console.log(clause);
+      }
+    }
+  }
 }
 
 export enum CompilerErrorCode {
@@ -85,52 +129,93 @@ export class Compiler {
     return `${functorName}/${arity}`;
   }
 
-  compileIdentifierClause(atom: Identifier): CompilerResult<Program> {
+  compileIdentifierClause(program: Program, atom: Identifier): CompilerResult<Program> {
     const error = new CompilerError(CompilerErrorCode.IdentifierAsClause, atom)
     return failure(error);
   }
 
-  compileVariableClause(atom: Variable): CompilerResult<Program> {
+  compileVariableClause(program: Program, atom: Variable): CompilerResult<Program> {
     const error = new CompilerError(CompilerErrorCode.VariableAsClause, atom)
     return failure(error);
   }
 
-  compileTupleClause(atom: Tuple): CompilerResult<Program> {
+  compileEmptyTuple(program: Program, atom: Atom): CompilerResult<Program> {
+    return success(Program.empty());
+  }
+
+  compileMonadTuple(program: Program, tuple: Tuple): CompilerResult<Program> {
+    const functor = tuple.atoms[0];
+    switch (functor.kind) {
+      case AtomKind.Identifier: {
+        const addr = program.cells.length;
+        const arity = 0;
+        const len = 2;
+        const neck = 2;
+        const functorName = functor.token.value;
+
+        const clauseKey = this.composeClauseKey(functorName, arity);
+        const clause = new Clause(addr, len, neck, [addr], []);
+        program.addClause(clauseKey, clause);
+
+        program.addSymbol(functorName);
+
+        const arityCell = mask(Tag.Arity, arity);
+        const symbolIndex = program.findSymbol(functorName);
+        const functorCell = mask(Tag.Symbol, symbolIndex);
+        program.addCells([arityCell, functorCell]);
+
+        return success(program);
+      }
+      case AtomKind.Variable: {
+        const error = new CompilerError(CompilerErrorCode.VariableAsFunctor, functor)
+        return failure(error);
+      }
+      case AtomKind.Tuple: {
+        const error = new CompilerError(CompilerErrorCode.TupleAsFunctor, functor)
+        return failure(error);
+      }
+    }
+  }
+
+  compileTupleClause(program: Program, atom: Tuple): CompilerResult<Program> {
     const len = atom.atoms.length;
     if (len === 0) {
+      return this.compileEmptyTuple(program, atom);
+    } else if (len === 1) {
+      return this.compileMonadTuple(program, atom);
     } else {
+      const error = new CompilerError(CompilerErrorCode.Unknown, atom)
+      return failure(error);
     }
-    const error = new CompilerError(CompilerErrorCode.VariableAsClause, atom)
-    return failure(error);
   }
 
-  compileClause(atom: Atom): CompilerResult<Program> {
+  compileClause(program: Program, atom: Atom): CompilerResult<Program> {
     switch (atom.kind) {
       case AtomKind.Identifier:
-        return this.compileIdentifierClause(atom);
+        return this.compileIdentifierClause(program, atom);
       case AtomKind.Variable:
-        return this.compileVariableClause(atom);
+        return this.compileVariableClause(program, atom);
       case AtomKind.Tuple:
-        return this.compileTupleClause(atom);
+        return this.compileTupleClause(program, atom);
     }
   }
 
   compile(atoms: Atom[]): CompilerResult<Program> {
     const initial: CompilerResult<Program> = success(Program.empty());
-    return atoms.reduce((lastResult: CompilerResult<Program>, atom) => {
+    return atoms.reduce((lastResult: CompilerResult<Program>, atom: Atom) => {
       if (isResultError(lastResult)) {
         return lastResult;
       }
       const program = lastResult.value;
 
-      const result = this.compileClause(atom);
+      const result = this.compileClause(program, atom);
       if (isResultError(result)) {
         return result;
       }
 
       program.append(result.value)
 
-      return success(program)
+      return success<CompilerError, Program>(program)
     }, initial);
   }
 }
