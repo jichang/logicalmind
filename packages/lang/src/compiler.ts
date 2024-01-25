@@ -57,6 +57,20 @@ export class Compiler {
     return `${functorName}/${arity}`;
   }
 
+  checkArity(predicates: Atom) {
+    if (!predicates) {
+      return 0;
+    }
+
+    switch (predicates.kind) {
+      case AtomKind.Identifier:
+      case AtomKind.Variable:
+        return 1;
+      case AtomKind.Tuple:
+        return predicates.atoms.length;
+    }
+  }
+
   compileIdentifierClause(program: Program, atom: Identifier): CompilerResult<Program> {
     const error = new CompilerError(CompilerErrorCode.IdentifierAsClause, atom)
     return failure(error);
@@ -67,54 +81,84 @@ export class Compiler {
     return failure(error);
   }
 
-  compileEmptyTuple(program: Program, atom: Atom): CompilerResult<Program> {
-    return success(Program.empty());
-  }
-
-  compileMonadTuple(program: Program, tuple: Tuple): CompilerResult<Program> {
-    const functor = tuple.atoms[0];
-    switch (functor.kind) {
-      case AtomKind.Identifier: {
-        const addr = program.cells.length;
-        const arity = 0;
-        const len = 2;
-        const neck = 2;
-        const functorName = functor.token.value;
-
-        const clauseKey = this.composeClauseKey(functorName, arity);
-        const clause = new Clause(addr, len, neck, [addr], []);
-        program.addClause(clauseKey, clause);
-
-        program.addSymbol(functorName);
-
-        const arityCell = mask(Tag.Arity, arity);
-        const symbolIndex = program.findSymbol(functorName);
-        const functorCell = mask(Tag.Symbol, symbolIndex);
-        program.addCells([arityCell, functorCell]);
-
-        return success(program);
-      }
-      case AtomKind.Variable: {
-        const error = new CompilerError(CompilerErrorCode.VariableAsFunctor, functor)
-        return failure(error);
-      }
-      case AtomKind.Tuple: {
-        const error = new CompilerError(CompilerErrorCode.TupleAsFunctor, functor)
-        return failure(error);
-      }
-    }
-  }
-
   compileTupleClause(program: Program, atom: Tuple): CompilerResult<Program> {
     const len = atom.atoms.length;
     if (len === 0) {
-      return this.compileEmptyTuple(program, atom);
-    } else if (len === 1) {
-      return this.compileMonadTuple(program, atom);
-    } else {
-      const error = new CompilerError(CompilerErrorCode.Unknown, atom)
+      return success(program);
+    }
+
+    const addr = program.cells.length;
+    const functor = atom.atoms[0];
+    const args = atom.atoms[1];
+    const goals = atom.atoms[2];
+
+    if (functor.kind === AtomKind.Variable) {
+      const error = new CompilerError(CompilerErrorCode.VariableAsFunctor, functor)
       return failure(error);
     }
+
+    if (functor.kind === AtomKind.Tuple) {
+      const error = new CompilerError(CompilerErrorCode.TupleAsFunctor, functor)
+      return failure(error);
+    }
+
+    const functorName = functor.token.value;
+    const arity = this.checkArity(args);
+    program.addSymbol(functorName);
+
+    const arityCell = mask(Tag.Arity, arity);
+    const symbolIndex = program.findSymbol(functorName);
+    const functorCell = mask(Tag.Symbol, symbolIndex);
+    program.addCells([arityCell, functorCell]);
+
+    const clauseKey = this.composeClauseKey(functorName, arity);
+
+    if (arity === 0) {
+      const len = program.cells.length - addr;
+      const neck = len;
+
+      const clause = new Clause(addr, len, neck, [addr], []);
+      program.addClause(clauseKey, clause);
+
+      return success(program);
+    }
+
+    if (!args) {
+      return success(program);
+    }
+
+    const variables = new Map<string, number>();
+
+    switch (args.kind) {
+      case AtomKind.Identifier: {
+        program.addSymbol(args.token.value);
+
+        const argSymbolIndex = program.findSymbol(args.token.value);
+        const argCell = mask(Tag.Symbol, argSymbolIndex);
+        program.addCells([argCell]);
+      }
+        break;
+      case AtomKind.Variable: {
+        variables.set(args.token.value, program.cells.length);
+        const argCell = mask(Tag.Declare, program.cells.length);
+        program.addCells([argCell]);
+      }
+        break;
+      case AtomKind.Tuple: { }
+        break;
+    }
+
+    if (!goals) {
+      const len = program.cells.length - addr;
+      const neck = len;
+
+      const clause = new Clause(addr, len, neck, [addr], []);
+      program.addClause(clauseKey, clause);
+
+      return success(program);
+    }
+
+    return success(program);
   }
 
   compileClause(program: Program, atom: Atom): CompilerResult<Program> {
