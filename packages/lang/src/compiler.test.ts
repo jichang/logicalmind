@@ -100,8 +100,8 @@ describe('Compiler', () => {
     expect(clause.addr).toBe(0);
     expect(clause.len).toBe(2);
     expect(clause.neck).toBe(2);
-    expect(clause.hgs.length).toBe(1);
-    expect(clause.hgs[0]).toBe(0);
+    expect(clause.head).toBe(0);
+    expect(clause.goals.length).toBe(0);
     expect(clause.xs.length).toBe(0);
   });
 
@@ -127,12 +127,12 @@ describe('Compiler', () => {
     expect(clause.addr).toBe(0);
     expect(clause.len).toBe(2);
     expect(clause.neck).toBe(2);
-    expect(clause.hgs.length).toBe(1);
-    expect(clause.hgs[0]).toBe(0);
+    expect(clause.head).toBe(0);
+    expect(clause.goals.length).toBe(0);
     expect(clause.xs.length).toBe(0);
   });
 
-  it('should return program for tuple with no predicates', () => {
+  it('should return program for tuple with single identity arg', () => {
     const code = "(a b)";
     const stream = new Stream(code, 0);
     const parser = new Parser();
@@ -156,12 +156,41 @@ describe('Compiler', () => {
     expect(clause.addr).toBe(0);
     expect(clause.len).toBe(3);
     expect(clause.neck).toBe(3);
-    expect(clause.hgs.length).toBe(1);
-    expect(clause.hgs[0]).toBe(0);
+    expect(clause.head).toBe(0);
+    expect(clause.goals.length).toBe(0);
     expect(clause.xs.length).toBe(0);
   });
 
-  it('should return program for tuple with no predicates', () => {
+  it('should return program for tuple with single-elem tuple arg', () => {
+    const code = "(a (b))";
+    const stream = new Stream(code, 0);
+    const parser = new Parser();
+    const parserResult = parser.parse(stream) as ResultValue<Atom[]>;
+    expect(parserResult.value.length).toBe(1);
+    const atoms = parserResult.value;
+    const compiler = new Compiler();
+    const compilerResult = compiler.compile(atoms) as ResultValue<Program>;
+    const program: Program = compilerResult.value;
+    expect(program.cells.length).toBe(3);
+    expect(program.cells[0]).toBe(13);
+    expect(program.cells[1]).toBe(3);
+    expect(program.cells[2]).toBe(11);
+    expect(program.symbols.length).toBe(2);
+    expect(program.symbols[0]).toBe('a');
+    expect(program.symbols[1]).toBe('b');
+    expect(program.clauses.size).toBe(1);
+    const clauses = program.clauses.get('a/1') as Clause[];
+    expect(clauses.length).toBe(1);
+    const clause = clauses[0];
+    expect(clause.addr).toBe(0);
+    expect(clause.len).toBe(3);
+    expect(clause.neck).toBe(3);
+    expect(clause.head).toBe(0);
+    expect(clause.goals.length).toBe(0);
+    expect(clause.xs.length).toBe(0);
+  });
+
+  it('should return program for tuple with single variable predicates', () => {
     const code = "(a B)";
     const stream = new Stream(code, 0);
     const parser = new Parser();
@@ -184,8 +213,72 @@ describe('Compiler', () => {
     expect(clause.addr).toBe(0);
     expect(clause.len).toBe(3);
     expect(clause.neck).toBe(3);
-    expect(clause.hgs.length).toBe(1);
-    expect(clause.hgs[0]).toBe(0);
+    expect(clause.head).toBe(0);
+    expect(clause.goals.length).toBe(0);
+    expect(clause.xs.length).toBe(0);
+  });
+
+  it('should return program for tuple with single-elem tuple arg', () => {
+    const code = "(a (B))";
+    const stream = new Stream(code, 0);
+    const parser = new Parser();
+    const parserResult = parser.parse(stream) as ResultValue<Atom[]>;
+    expect(parserResult.value.length).toBe(1);
+    const atoms = parserResult.value;
+    const compiler = new Compiler();
+    const compilerResult = compiler.compile(atoms) as ResultValue<Program>;
+    const program: Program = compilerResult.value;
+    expect(program.cells.length).toBe(3);
+    expect(program.cells[0]).toBe(13);
+    expect(program.cells[1]).toBe(3);
+    expect(program.cells[2]).toBe(16);
+    expect(program.symbols.length).toBe(1);
+    expect(program.symbols[0]).toBe('a');
+    expect(program.clauses.size).toBe(1);
+    const clauses = program.clauses.get('a/1') as Clause[];
+    expect(clauses.length).toBe(1);
+    const clause = clauses[0];
+    expect(clause.addr).toBe(0);
+    expect(clause.len).toBe(3);
+    expect(clause.neck).toBe(3);
+    expect(clause.head).toBe(0);
+    expect(clause.goals.length).toBe(0);
+    expect(clause.xs.length).toBe(0);
+  });
+
+  it('should return program for tuple with tuple predicates', () => {
+    const code = "(a (b B (c B)))";
+    const stream = new Stream(code, 0);
+    const parser = new Parser();
+    const parserResult = parser.parse(stream) as ResultValue<Atom[]>;
+    expect(parserResult.value.length).toBe(1);
+    const atoms = parserResult.value;
+    const compiler = new Compiler();
+    const compilerResult = compiler.compile(atoms) as ResultValue<Program>;
+    const program: Program = compilerResult.value;
+    program.print();
+    expect(program.cells.length).toBe(8);
+    expect(program.cells[0]).toBe(29);
+    expect(program.cells[1]).toBe(3);
+    expect(program.cells[2]).toBe(11);
+    expect(program.cells[3]).toBe(24);
+    expect(program.cells[4]).toBe(42);
+    expect(program.cells[5]).toBe(21);
+    expect(program.cells[6]).toBe(19);
+    expect(program.cells[7]).toBe(25);
+    expect(program.symbols.length).toBe(3);
+    expect(program.symbols[0]).toBe('a');
+    expect(program.symbols[1]).toBe('b');
+    expect(program.symbols[2]).toBe('c');
+    expect(program.clauses.size).toBe(1);
+    const clauses = program.clauses.get('a/3') as Clause[];
+    expect(clauses.length).toBe(1);
+    const clause = clauses[0];
+    expect(clause.addr).toBe(0);
+    expect(clause.len).toBe(8);
+    expect(clause.head).toBe(0);
+    expect(clause.neck).toBe(8);
+    expect(clause.goals.length).toBe(0);
     expect(clause.xs.length).toBe(0);
   });
 })

@@ -23,6 +23,24 @@ export function tagOf(word: number): Tag {
   return (word & 0b111)
 }
 
+export function tagNameOf(word: number): string {
+  const tag = tagOf(word) as Tag;
+  switch (tag) {
+    case Tag.Declare:
+      return 'Declare';
+    case Tag.Use:
+      return 'Use';
+    case Tag.Reference:
+      return 'Reference';
+    case Tag.Symbol:
+      return 'Symbol';
+    case Tag.Integer:
+      return 'Integer';
+    case Tag.Arity:
+      return 'Arity';
+  }
+}
+
 export enum CompilerErrorCode {
   Unknown = 0,
   IdentifierAsClause,
@@ -57,17 +75,86 @@ export class Compiler {
     return `${functorName}/${arity}`;
   }
 
-  checkArity(predicates: Atom) {
-    if (!predicates) {
+  checkArity(atom: Atom) {
+    if (!atom) {
       return 0;
     }
 
-    switch (predicates.kind) {
+    switch (atom.kind) {
       case AtomKind.Identifier:
       case AtomKind.Variable:
         return 1;
       case AtomKind.Tuple:
-        return predicates.atoms.length;
+        return atom.atoms.length;
+    }
+  }
+
+  compileClauseGoal(program: Program, variables: Map<string, number>, goal: Tuple) {
+    const arity = this.checkArity(goal);
+    const arityCell = mask(Tag.Arity, arity);
+
+    program.addCells([arityCell]);
+
+    for (const subGoal of goal.atoms) {
+      switch (subGoal.kind) {
+        case AtomKind.Identifier:
+          {
+            program.addSymbol(subGoal.token.value);
+            const symbolIndex = program.findSymbol(subGoal.token.value);
+            const argCell = mask(Tag.Symbol, symbolIndex);
+            program.addCells([argCell]);
+          }
+          break;
+        case AtomKind.Variable:
+          {
+            const isVariableDeclared = variables.has(subGoal.token.value);
+            if (!isVariableDeclared) {
+              variables.set(subGoal.token.value, program.cells.length);
+            }
+            const variableTag = isVariableDeclared ? Tag.Use : Tag.Declare;
+            const variableIndex = variables.get(subGoal.token.value) as number;
+            const argCell = mask(variableTag, variableIndex);
+            program.addCells([argCell]);
+          }
+          break;
+        case AtomKind.Tuple:
+          {
+            this.compileClauseGoal(program, variables, subGoal);
+          }
+          break;
+      }
+    }
+  }
+
+  compileClauseArg(program: Program, variables: Map<string, number>, argsCellOffset: number, arg: Atom) {
+    switch (arg.kind) {
+      case AtomKind.Identifier:
+        {
+          program.addSymbol(arg.token.value);
+          const symbolIndex = program.findSymbol(arg.token.value);
+          const argCell = mask(Tag.Symbol, symbolIndex);
+          program.cells[argsCellOffset] = argCell;
+        }
+        break;
+      case AtomKind.Variable:
+        {
+          const isVariableDeclared = variables.has(arg.token.value);
+          if (!isVariableDeclared) {
+            variables.set(arg.token.value, argsCellOffset);
+          }
+          const variableTag = isVariableDeclared ? Tag.Use : Tag.Declare;
+          const variableIndex = variables.get(arg.token.value) as number;
+          const argCell = mask(variableTag, variableIndex);
+          program.cells[argsCellOffset] = argCell;
+        }
+        break;
+      case AtomKind.Tuple:
+        {
+          const argCell = mask(Tag.Reference, program.cells.length);
+          program.cells[argsCellOffset] = argCell;
+          this.compileClauseGoal(program, variables, arg);
+        }
+        break;
     }
   }
 
@@ -82,12 +169,11 @@ export class Compiler {
   }
 
   compileTupleClause(program: Program, atom: Tuple): CompilerResult<Program> {
-    const len = atom.atoms.length;
-    if (len === 0) {
+    if (atom.atoms.length === 0) {
       return success(program);
     }
 
-    const addr = program.cells.length;
+    const head = program.cells.length;
     const functor = atom.atoms[0];
     const args = atom.atoms[1];
     const goals = atom.atoms[2];
@@ -114,10 +200,10 @@ export class Compiler {
     const clauseKey = this.composeClauseKey(functorName, arity);
 
     if (arity === 0) {
-      const len = program.cells.length - addr;
+      const len = program.cells.length - head;
       const neck = len;
 
-      const clause = new Clause(addr, len, neck, [addr], []);
+      const clause = new Clause(head, len, head, neck, [], []);
       program.addClause(clauseKey, clause);
 
       return success(program);
@@ -126,8 +212,6 @@ export class Compiler {
     if (!args) {
       return success(program);
     }
-
-    const variables = new Map<string, number>();
 
     switch (args.kind) {
       case AtomKind.Identifier: {
@@ -139,25 +223,39 @@ export class Compiler {
       }
         break;
       case AtomKind.Variable: {
-        variables.set(args.token.value, program.cells.length);
         const argCell = mask(Tag.Declare, program.cells.length);
         program.addCells([argCell]);
       }
         break;
-      case AtomKind.Tuple: { }
+      case AtomKind.Tuple: {
+        const variables = new Map<string, number>();
+
+        const argsCount = args.atoms.length;
+        const argsCells = new Array(argsCount);
+        const argsCellOffset = program.cells.length;
+        program.addCells(argsCells);
+
+        for (let index in args.atoms) {
+          const arg = args.atoms[index];
+          this.compileClauseArg(program, variables, argsCellOffset + Number(index), arg);
+        }
+      }
         break;
     }
+    const neck = program.cells.length;
 
     if (!goals) {
-      const len = program.cells.length - addr;
-      const neck = len;
+      const len = neck - head;
 
-      const clause = new Clause(addr, len, neck, [addr], []);
+      const clause = new Clause(head, len, head, neck, [], []);
       program.addClause(clauseKey, clause);
 
       return success(program);
     }
 
+    const len = program.cells.length - head;
+    const clause = new Clause(head, len, head, neck, [], []);
+    program.addClause(clauseKey, clause);
     return success(program);
   }
 
