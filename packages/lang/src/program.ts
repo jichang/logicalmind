@@ -1,13 +1,13 @@
 import { equalTo } from "./common";
-import { tagNameOf, unmask } from "./compiler";
+import { Tag, tagNameOf, tagOf, unmask } from "./compiler";
 
 export class Clause {
   constructor(
     public addr = 0,
     public len = 0,
-    public head = 0,
-    public neck = 0,
-    public goals: number[] = [],
+    public headAddr = 0,
+    public neckAdd = 0,
+    public goalAddrs: number[] = [],
     public xs: number[] = []
   ) { }
 
@@ -48,16 +48,17 @@ export class Program {
     }
   }
 
-  addCells(cells: number[]) {
+  addCells(...cells: number[]) {
     this.cells.push(...cells);
   }
-
-  append(program: Program) { }
 
   print() {
     console.log('cells: ');
     this.cells.map((cell, index) => {
-      console.log(`[${index}]: ${tagNameOf(cell)} ${unmask(cell)}`);
+      const tag = tagOf(cell);
+      const tagName = tagNameOf(cell);
+      const tagValue = tag === Tag.Symbol ? this.symbols[unmask(cell)] : unmask(cell);
+      console.log(`[${index}]:${cell} = ${tagName} ${tagValue}`);
     })
     console.log('symbols: ');
     this.symbols.map((symbol, index) => {

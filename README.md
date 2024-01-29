@@ -15,9 +15,9 @@ For example
 (true)
 
 // fact that a is male
-(male a)
+(male (a))
 // fact that b is female
-(female b)
+(female (b))
 
 // fact that a is c's father
 (father (a c))

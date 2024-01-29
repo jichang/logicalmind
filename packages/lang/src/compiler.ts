@@ -45,8 +45,12 @@ export enum CompilerErrorCode {
   Unknown = 0,
   IdentifierAsClause,
   VariableAsClause,
-  WrongFormat,
+  WrongClauseFormat,
   EmptyTerm,
+  WrongGoalFormat,
+  ArgsIsNotTuple,
+  SubGoalsIsNotTuple,
+  SubGoalIsNotTuple,
   TupleAsFunctor,
   VariableAsFunctor
 }
@@ -75,7 +79,7 @@ export class Compiler {
     return `${functorName}/${arity}`;
   }
 
-  checkArity(atom: Atom) {
+  determineArity(atom: Atom | undefined) {
     if (!atom) {
       return 0;
     }
@@ -89,73 +93,93 @@ export class Compiler {
     }
   }
 
-  compileClauseGoal(program: Program, variables: Map<string, number>, goal: Tuple) {
-    const arity = this.checkArity(goal);
-    const arityCell = mask(Tag.Arity, arity);
-
-    program.addCells([arityCell]);
-
-    for (const subGoal of goal.atoms) {
-      switch (subGoal.kind) {
-        case AtomKind.Identifier:
-          {
-            program.addSymbol(subGoal.token.value);
-            const symbolIndex = program.findSymbol(subGoal.token.value);
-            const argCell = mask(Tag.Symbol, symbolIndex);
-            program.addCells([argCell]);
-          }
-          break;
-        case AtomKind.Variable:
-          {
-            const isVariableDeclared = variables.has(subGoal.token.value);
-            if (!isVariableDeclared) {
-              variables.set(subGoal.token.value, program.cells.length);
-            }
-            const variableTag = isVariableDeclared ? Tag.Use : Tag.Declare;
-            const variableIndex = variables.get(subGoal.token.value) as number;
-            const argCell = mask(variableTag, variableIndex);
-            program.addCells([argCell]);
-          }
-          break;
-        case AtomKind.Tuple:
-          {
-            this.compileClauseGoal(program, variables, subGoal);
-          }
-          break;
-      }
+  compileGoal(program: Program, variables: Map<string, number>, fact: Tuple): CompilerResult<Program> {
+    if (fact.atoms.length === 0) {
+      return success(program);
     }
-  }
 
-  compileClauseArg(program: Program, variables: Map<string, number>, argsCellOffset: number, arg: Atom) {
-    switch (arg.kind) {
-      case AtomKind.Identifier:
-        {
-          program.addSymbol(arg.token.value);
-          const symbolIndex = program.findSymbol(arg.token.value);
-          const argCell = mask(Tag.Symbol, symbolIndex);
-          program.cells[argsCellOffset] = argCell;
+    if (fact.atoms.length > 2) {
+      const error = new CompilerError(CompilerErrorCode.WrongGoalFormat, fact)
+      return failure(error);
+    }
+
+    const functorAtom = fact.atoms[0];
+
+    if (functorAtom.kind === AtomKind.Variable) {
+      const error = new CompilerError(CompilerErrorCode.VariableAsFunctor, functorAtom)
+      return failure(error);
+    }
+
+    if (functorAtom.kind === AtomKind.Tuple) {
+      const error = new CompilerError(CompilerErrorCode.TupleAsFunctor, functorAtom)
+      return failure(error);
+    }
+
+    const argsAtom = fact.atoms[1];
+
+    const arity = this.determineArity(argsAtom);
+    const arityCell = mask(Tag.Arity, arity);
+    program.addCells(arityCell);
+
+    const functorName = functorAtom.token.value;
+    program.addSymbol(functorName);
+    const symbolIndex = program.findSymbol(functorName);
+    const functorCell = mask(Tag.Symbol, symbolIndex);
+    program.addCells(functorCell);
+
+    if (!argsAtom) {
+      return success(program);
+    }
+
+    const argsAddr = program.cells.length;
+    const argsCells = new Array(arity);
+    program.addCells(...argsCells);
+
+    if (argsAtom.kind !== AtomKind.Tuple) {
+      const error = new CompilerError(CompilerErrorCode.ArgsIsNotTuple, functorAtom)
+      return failure(error);
+    }
+
+    for (const index in argsAtom.atoms) {
+      const argAtom = argsAtom.atoms[index];
+      const cellAddr = argsAddr + Number(index);
+
+      switch (argAtom.kind) {
+        case AtomKind.Identifier: {
+          const identifier = argAtom.token.value;
+          program.addSymbol(identifier);
+          const symbolIndex = program.findSymbol(identifier);
+          const identifierCell = mask(Tag.Symbol, symbolIndex);
+          program.cells[cellAddr] = identifierCell;
         }
-        break;
-      case AtomKind.Variable:
-        {
-          const isVariableDeclared = variables.has(arg.token.value);
+          break;
+        case AtomKind.Variable: {
+          const variable = argAtom.token.value;
+          const isVariableDeclared = variables.has(variable);
           if (!isVariableDeclared) {
-            variables.set(arg.token.value, argsCellOffset);
+            variables.set(variable, cellAddr);
           }
           const variableTag = isVariableDeclared ? Tag.Use : Tag.Declare;
-          const variableIndex = variables.get(arg.token.value) as number;
-          const argCell = mask(variableTag, variableIndex);
-          program.cells[argsCellOffset] = argCell;
+          const variableAddr = variables.get(variable) as number;
+          const variableCell = mask(variableTag, variableAddr);
+          program.cells[cellAddr] = variableCell;
         }
-        break;
-      case AtomKind.Tuple:
-        {
-          const argCell = mask(Tag.Reference, program.cells.length);
-          program.cells[argsCellOffset] = argCell;
-          this.compileClauseGoal(program, variables, arg);
+          break;
+        case AtomKind.Tuple: {
+          const subGoalAddr = program.cells.length;
+          const referenceCell = mask(Tag.Reference, subGoalAddr);
+          program.cells[cellAddr] = referenceCell;
+
+          const result = this.compileGoal(program, variables, argAtom);
+          if (isResultError(result)) {
+            return result;
+          }
+          break;
         }
-        break;
+      }
     }
+
+    return success(program);
   }
 
   compileIdentifierClause(program: Program, atom: Identifier): CompilerResult<Program> {
@@ -173,88 +197,56 @@ export class Compiler {
       return success(program);
     }
 
-    const head = program.cells.length;
-    const functor = atom.atoms[0];
-    const args = atom.atoms[1];
-    const goals = atom.atoms[2];
-
-    if (functor.kind === AtomKind.Variable) {
-      const error = new CompilerError(CompilerErrorCode.VariableAsFunctor, functor)
+    if (atom.atoms.length > 3) {
+      const error = new CompilerError(CompilerErrorCode.WrongClauseFormat, atom)
       return failure(error);
     }
 
-    if (functor.kind === AtomKind.Tuple) {
-      const error = new CompilerError(CompilerErrorCode.TupleAsFunctor, functor)
-      return failure(error);
+    const headAddr = program.cells.length;
+    const functorAtom = atom.atoms[0];
+    const argsAtom = atom.atoms[1];
+
+    const headFact: Tuple = {
+      kind: AtomKind.Tuple,
+      atoms: [functorAtom, argsAtom]
     }
 
-    const functorName = functor.token.value;
-    const arity = this.checkArity(args);
-    program.addSymbol(functorName);
-
-    const arityCell = mask(Tag.Arity, arity);
-    const symbolIndex = program.findSymbol(functorName);
-    const functorCell = mask(Tag.Symbol, symbolIndex);
-    program.addCells([arityCell, functorCell]);
-
-    const clauseKey = this.composeClauseKey(functorName, arity);
-
-    if (arity === 0) {
-      const len = program.cells.length - head;
-      const neck = len;
-
-      const clause = new Clause(head, len, head, neck, [], []);
-      program.addClause(clauseKey, clause);
-
-      return success(program);
+    const variables = new Map<string, number>();
+    const result = this.compileGoal(program, variables, headFact);
+    if (isResultError(result)) {
+      return result;
     }
 
-    if (!args) {
-      return success(program);
-    }
+    const neckAddr = program.cells.length;
+    const goalAddrs: number[] = [];
 
-    switch (args.kind) {
-      case AtomKind.Identifier: {
-        program.addSymbol(args.token.value);
-
-        const argSymbolIndex = program.findSymbol(args.token.value);
-        const argCell = mask(Tag.Symbol, argSymbolIndex);
-        program.addCells([argCell]);
+    const goalsAtom = atom.atoms[2];
+    if (goalsAtom) {
+      if (goalsAtom.kind !== AtomKind.Tuple) {
+        const error = new CompilerError(CompilerErrorCode.SubGoalsIsNotTuple, goalsAtom)
+        return failure(error);
       }
-        break;
-      case AtomKind.Variable: {
-        const argCell = mask(Tag.Declare, program.cells.length);
-        program.addCells([argCell]);
-      }
-        break;
-      case AtomKind.Tuple: {
-        const variables = new Map<string, number>();
 
-        const argsCount = args.atoms.length;
-        const argsCells = new Array(argsCount);
-        const argsCellOffset = program.cells.length;
-        program.addCells(argsCells);
+      for (const goal of goalsAtom.atoms) {
+        goalAddrs.push(program.cells.length);
 
-        for (let index in args.atoms) {
-          const arg = args.atoms[index];
-          this.compileClauseArg(program, variables, argsCellOffset + Number(index), arg);
+        if (goal.kind !== AtomKind.Tuple) {
+          const error = new CompilerError(CompilerErrorCode.SubGoalIsNotTuple, goal)
+          return failure(error);
+        }
+
+        const result = this.compileGoal(program, variables, goal);
+        if (isResultError(result)) {
+          return result;
         }
       }
-        break;
-    }
-    const neck = program.cells.length;
-
-    if (!goals) {
-      const len = neck - head;
-
-      const clause = new Clause(head, len, head, neck, [], []);
-      program.addClause(clauseKey, clause);
-
-      return success(program);
     }
 
-    const len = program.cells.length - head;
-    const clause = new Clause(head, len, head, neck, [], []);
+    const functorName = (functorAtom as Identifier).token.value;
+    const arity = this.determineArity(argsAtom);
+    const len = program.cells.length - headAddr;
+    const clauseKey = this.composeClauseKey(functorName, arity);
+    const clause = new Clause(headAddr, len, headAddr, neckAddr, goalAddrs, []);
     program.addClause(clauseKey, clause);
     return success(program);
   }
@@ -282,8 +274,6 @@ export class Compiler {
       if (isResultError(result)) {
         return result;
       }
-
-      program.append(result.value)
 
       return success<CompilerError, Program>(program)
     }, initial);

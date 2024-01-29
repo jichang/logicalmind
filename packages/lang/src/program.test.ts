@@ -32,7 +32,7 @@ describe('Program', () => {
     const program = Program.empty();
     const cell1 = 0;
     const cell2 = 1;
-    program.addCells([cell1, cell2]);
+    program.addCells(cell1, cell2);
 
     expect(program.cells.length).toBe(2);
     const cells = program.cells;
