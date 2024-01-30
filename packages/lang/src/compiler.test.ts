@@ -102,7 +102,8 @@ describe('Compiler', () => {
     expect(clause.neckAdd).toBe(2);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
-    expect(clause.xs.length).toBe(0);
+    expect(clause.xs.length).toBe(1);
+    expect(clause.xs[0]).toBe(3);
   });
 
   it('should return program for tuple with no predicates', () => {
@@ -129,7 +130,8 @@ describe('Compiler', () => {
     expect(clause.neckAdd).toBe(2);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
-    expect(clause.xs.length).toBe(0);
+    expect(clause.xs.length).toBe(1);
+    expect(clause.xs[0]).toBe(3);
   });
 
   it('should return program for tuple with single-elem tuple arg', () => {
@@ -158,7 +160,9 @@ describe('Compiler', () => {
     expect(clause.neckAdd).toBe(3);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
-    expect(clause.xs.length).toBe(0);
+    expect(clause.xs.length).toBe(2);
+    expect(clause.xs[0]).toBe(3);
+    expect(clause.xs[1]).toBe(11);
   });
 
   it('should return program for tuple with single-elem tuple arg', () => {
@@ -186,7 +190,9 @@ describe('Compiler', () => {
     expect(clause.neckAdd).toBe(3);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
-    expect(clause.xs.length).toBe(0);
+    expect(clause.xs.length).toBe(2);
+    expect(clause.xs[0]).toBe(3);
+    expect(clause.xs[1]).toBe(16);
   });
 
   it('should return program for tuple with tuple predicates', () => {
@@ -221,7 +227,11 @@ describe('Compiler', () => {
     expect(clause.headAddr).toBe(0);
     expect(clause.neckAdd).toBe(8);
     expect(clause.goalAddrs.length).toBe(0);
-    expect(clause.xs.length).toBe(0);
+    expect(clause.xs.length).toBe(4);
+    expect(clause.xs[0]).toBe(3);
+    expect(clause.xs[1]).toBe(11);
+    expect(clause.xs[2]).toBe(24);
+    expect(clause.xs[3]).toBe(42);
   });
 
   it('should return program for tuple with tuple predicates', () => {
@@ -262,7 +272,11 @@ describe('Compiler', () => {
     expect(clause.neckAdd).toBe(8);
     expect(clause.goalAddrs.length).toBe(1);
     expect(clause.goalAddrs[0]).toBe(8);
-    expect(clause.xs.length).toBe(0);
+    expect(clause.xs.length).toBe(4);
+    expect(clause.xs[0]).toBe(3);
+    expect(clause.xs[1]).toBe(11);
+    expect(clause.xs[2]).toBe(24);
+    expect(clause.xs[3]).toBe(42);
   });
 
   it('should return program for muitiple tuples', () => {
@@ -313,7 +327,11 @@ describe('Compiler', () => {
     expect(firstClause.headAddr).toBe(0);
     expect(firstClause.neckAdd).toBe(5);
     expect(firstClause.goalAddrs.length).toBe(0);
-    expect(firstClause.xs.length).toBe(0);
+    expect(firstClause.xs.length).toBe(4);
+    expect(firstClause.xs[0]).toBe(3);
+    expect(firstClause.xs[1]).toBe(11);
+    expect(firstClause.xs[2]).toBe(19);
+    expect(firstClause.xs[3]).toBe(27);
     const sndClauses = program.clauses.get('add/3') as Clause[];
     expect(sndClauses.length).toBe(1);
     const sndClause = sndClauses[0];
@@ -323,6 +341,10 @@ describe('Compiler', () => {
     expect(sndClause.neckAdd).toBe(16);
     expect(sndClause.goalAddrs.length).toBe(1);
     expect(sndClause.goalAddrs[0]).toBe(16);
-    expect(sndClause.xs.length).toBe(0);
+    expect(sndClause.xs.length).toBe(4);
+    expect(sndClause.xs[0]).toBe(35);
+    expect(sndClause.xs[1]).toBe(82);
+    expect(sndClause.xs[2]).toBe(64);
+    expect(sndClause.xs[3]).toBe(106);
   });
 })

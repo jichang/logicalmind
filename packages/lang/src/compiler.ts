@@ -1,45 +1,6 @@
 import { Atom, AtomKind, Identifier, Tuple, Variable } from "./parser";
-import { Program, Clause } from "./program";
+import { Program, Clause, Tag, mask } from "./program";
 import { Result, failure, isResultError, success } from "./result";
-
-export enum Tag {
-  Declare = 0,
-  Use,
-  Reference,
-  Symbol,
-  Integer,
-  Arity
-}
-
-export function mask(tag: Tag, word: number): number {
-  return word << 3 | tag;
-}
-
-export function unmask(word: number): number {
-  return word >> 3
-}
-
-export function tagOf(word: number): Tag {
-  return (word & 0b111)
-}
-
-export function tagNameOf(word: number): string {
-  const tag = tagOf(word) as Tag;
-  switch (tag) {
-    case Tag.Declare:
-      return 'Declare';
-    case Tag.Use:
-      return 'Use';
-    case Tag.Reference:
-      return 'Reference';
-    case Tag.Symbol:
-      return 'Symbol';
-    case Tag.Integer:
-      return 'Integer';
-    case Tag.Arity:
-      return 'Arity';
-  }
-}
 
 export enum CompilerErrorCode {
   Unknown = 0,
@@ -246,7 +207,16 @@ export class Compiler {
     const arity = this.determineArity(argsAtom);
     const len = program.cells.length - headAddr;
     const clauseKey = this.composeClauseKey(functorName, arity);
-    const clause = new Clause(headAddr, len, headAddr, neckAddr, goalAddrs, []);
+    const xs: number[] = [];
+
+    for (let i = 0; i < Program.MaxArgIndex && i <= arity; i++) {
+      const addr = headAddr + 1 + i;
+      const cell = program.cells[addr];
+      const deref = program.deref(cell);
+      xs.push(deref);
+    }
+
+    const clause = new Clause(headAddr, len, headAddr, neckAddr, goalAddrs, xs);
     program.addClause(clauseKey, clause);
     return success(program);
   }
