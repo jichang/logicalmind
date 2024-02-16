@@ -47,7 +47,7 @@ export function isVariable(word: number) {
 export class Clause {
   constructor(
     // the base of the heap where the cells for the clause start
-    public addr = 0,
+    public baseAddr = 0,
     // the length of the code of the clause i.e., number of the heap cells the clause occupies
     public len = 0,
     // the base of the clause head
@@ -88,15 +88,19 @@ export class Program {
     }
   }
 
-  findSymbol(symbol: string) {
-    return this.symbols.findIndex(equalTo(symbol));
+  addSymbol(symbol: string) {
+    const index = this.symbols.indexOf(symbol);
+    if (index !== -1) {
+      return index;
+    }
+
+    this.symbols.push(symbol);
+
+    return this.symbols.length - 1;
   }
 
-  addSymbol(symbol: string) {
-    const index = this.symbols.findIndex(equalTo(symbol));
-    if (index === -1) {
-      this.symbols.push(symbol);
-    }
+  getSymbol(index: number) {
+    return this.symbols[index];
   }
 
   addCells(...cells: number[]) {

@@ -97,7 +97,7 @@ describe('Compiler', () => {
     const clauses = program.clauses.get('a/0') as Clause[];
     expect(clauses.length).toBe(1);
     const clause = clauses[0];
-    expect(clause.addr).toBe(0);
+    expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(2);
     expect(clause.neckAdd).toBe(2);
     expect(clause.headAddr).toBe(0);
@@ -125,7 +125,7 @@ describe('Compiler', () => {
     const clauses = program.clauses.get('a/0') as Clause[];
     expect(clauses.length).toBe(1);
     const clause = clauses[0];
-    expect(clause.addr).toBe(0);
+    expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(2);
     expect(clause.neckAdd).toBe(2);
     expect(clause.headAddr).toBe(0);
@@ -155,7 +155,7 @@ describe('Compiler', () => {
     const clauses = program.clauses.get('a/1') as Clause[];
     expect(clauses.length).toBe(1);
     const clause = clauses[0];
-    expect(clause.addr).toBe(0);
+    expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(3);
     expect(clause.neckAdd).toBe(3);
     expect(clause.headAddr).toBe(0);
@@ -185,7 +185,7 @@ describe('Compiler', () => {
     const clauses = program.clauses.get('a/1') as Clause[];
     expect(clauses.length).toBe(1);
     const clause = clauses[0];
-    expect(clause.addr).toBe(0);
+    expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(3);
     expect(clause.neckAdd).toBe(3);
     expect(clause.headAddr).toBe(0);
@@ -222,7 +222,7 @@ describe('Compiler', () => {
     const clauses = program.clauses.get('a/3') as Clause[];
     expect(clauses.length).toBe(1);
     const clause = clauses[0];
-    expect(clause.addr).toBe(0);
+    expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(8);
     expect(clause.headAddr).toBe(0);
     expect(clause.neckAdd).toBe(8);
@@ -266,7 +266,7 @@ describe('Compiler', () => {
     const clauses = program.clauses.get('a/3') as Clause[];
     expect(clauses.length).toBe(1);
     const clause = clauses[0];
-    expect(clause.addr).toBe(0);
+    expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(13);
     expect(clause.headAddr).toBe(0);
     expect(clause.neckAdd).toBe(8);
@@ -322,7 +322,7 @@ describe('Compiler', () => {
     const firstClauses = program.clauses.get('a/3') as Clause[];
     expect(firstClauses.length).toBe(1);
     const firstClause = firstClauses[0];
-    expect(firstClause.addr).toBe(0);
+    expect(firstClause.baseAddr).toBe(0);
     expect(firstClause.len).toBe(5);
     expect(firstClause.headAddr).toBe(0);
     expect(firstClause.neckAdd).toBe(5);
@@ -335,7 +335,7 @@ describe('Compiler', () => {
     const sndClauses = program.clauses.get('add/3') as Clause[];
     expect(sndClauses.length).toBe(1);
     const sndClause = sndClauses[0];
-    expect(sndClause.addr).toBe(5);
+    expect(sndClause.baseAddr).toBe(5);
     expect(sndClause.len).toBe(16);
     expect(sndClause.headAddr).toBe(5);
     expect(sndClause.neckAdd).toBe(16);

@@ -83,8 +83,7 @@ export class Compiler {
     program.addCells(arityCell);
 
     const functorName = functorAtom.token.value;
-    program.addSymbol(functorName);
-    const symbolIndex = program.findSymbol(functorName);
+    const symbolIndex = program.addSymbol(functorName);
     const functorCell = mask(Tag.Symbol, symbolIndex);
     program.addCells(functorCell);
 
@@ -108,8 +107,7 @@ export class Compiler {
       switch (argAtom.kind) {
         case AtomKind.Identifier: {
           const identifier = argAtom.token.value;
-          program.addSymbol(identifier);
-          const symbolIndex = program.findSymbol(identifier);
+          const symbolIndex = program.addSymbol(identifier);
           const identifierCell = mask(Tag.Symbol, symbolIndex);
           program.cells[cellAddr] = identifierCell;
         }
