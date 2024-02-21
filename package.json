@@ -1,5 +1,5 @@
 {
-  "name": "logicalmind",
+  "name": "logice",
   "version": "1.0.0",
   "description": "Training to have logical mind",
   "main": "index.js",
@@ -7,11 +7,12 @@
     "packages/*"
   ],
   "scripts": {
+    "build": "npm run build --ws",
     "test": "npm run test --ws"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jichang/logicalmind.git"
+    "url": "git+https://github.com/jichang/logice.git"
   },
   "keywords": [
     "Logical",
@@ -20,8 +21,8 @@
   "author": "Ji Chang",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jichang/logicalmind/issues"
+    "url": "https://github.com/jichang/logice/issues"
   },
-  "homepage": "https://github.com/jichang/logicalmind#readme",
+  "homepage": "https://github.com/jichang/logice#readme",
   "devDependencies": {}
 }

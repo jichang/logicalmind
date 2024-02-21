@@ -91,7 +91,7 @@ export class Compiler {
       return success(program);
     }
 
-    const argsAddr = program.cells.length;
+    const argsAddr = program.size();
     const argsCells = new Array(arity);
     program.addCells(...argsCells);
 
@@ -109,7 +109,7 @@ export class Compiler {
           const identifier = argAtom.token.value;
           const symbolIndex = program.addSymbol(identifier);
           const identifierCell = mask(Tag.Symbol, symbolIndex);
-          program.cells[cellAddr] = identifierCell;
+          program.setCell(cellAddr, identifierCell);
         }
           break;
         case AtomKind.Variable: {
@@ -121,13 +121,13 @@ export class Compiler {
           const variableTag = isVariableDeclared ? Tag.Use : Tag.Declare;
           const variableAddr = variables.get(variable) as number;
           const variableCell = mask(variableTag, variableAddr);
-          program.cells[cellAddr] = variableCell;
+          program.setCell(cellAddr, variableCell);
         }
           break;
         case AtomKind.Tuple: {
-          const subGoalAddr = program.cells.length;
+          const subGoalAddr = program.size();
           const referenceCell = mask(Tag.Reference, subGoalAddr);
-          program.cells[cellAddr] = referenceCell;
+          program.setCell(cellAddr, referenceCell);
 
           const result = this.compileGoal(program, variables, argAtom);
           if (isResultError(result)) {
@@ -161,7 +161,7 @@ export class Compiler {
       return failure(error);
     }
 
-    const headAddr = program.cells.length;
+    const headAddr = program.size();
     const functorAtom = atom.atoms[0];
     const argsAtom = atom.atoms[1];
 
@@ -176,7 +176,7 @@ export class Compiler {
       return result;
     }
 
-    const neckAddr = program.cells.length;
+    const neckAddr = program.size();
     const goalAddrs: number[] = [];
 
     const goalsAtom = atom.atoms[2];
@@ -187,7 +187,7 @@ export class Compiler {
       }
 
       for (const goal of goalsAtom.atoms) {
-        goalAddrs.push(program.cells.length);
+        goalAddrs.push(program.size());
 
         if (goal.kind !== AtomKind.Tuple) {
           const error = new CompilerError(CompilerErrorCode.SubGoalIsNotTuple, goal)
@@ -203,13 +203,13 @@ export class Compiler {
 
     const functorName = (functorAtom as Identifier).token.value;
     const arity = this.determineArity(argsAtom);
-    const len = program.cells.length - headAddr;
+    const len = program.size() - headAddr;
     const clauseKey = this.composeClauseKey(functorName, arity);
     const xs: number[] = [];
 
     for (let i = 0; i < Program.MaxArgIndex && i <= arity; i++) {
       const addr = headAddr + 1 + i;
-      const cell = program.cells[addr];
+      const cell = program.getCell(addr);
       const deref = program.deref(cell);
       xs.push(deref);
     }

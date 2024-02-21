@@ -1,5 +1,3 @@
-import { equalTo } from "./common";
-
 export enum Tag {
   Declare = 0,
   Use,
@@ -44,6 +42,11 @@ export function isVariable(word: number) {
   return tag === Tag.Declare || tag === Tag.Use;
 }
 
+export function isReference(word: number) {
+  const tag = tagOf(word) as Tag;
+  return tag === Tag.Reference;
+}
+
 export class Clause {
   constructor(
     // the base of the heap where the cells for the clause start
@@ -77,6 +80,10 @@ export class Program {
 
   static empty() {
     return new Program();
+  }
+
+  size() {
+    return this.cells.length;
   }
 
   addClause(key: string, clause: Clause) {
@@ -119,5 +126,21 @@ export class Program {
     }
 
     return word;
+  }
+  
+  getCell(cellAddr: number) {
+    return this.cells[cellAddr];
+  }
+
+  setCell(cellAddr: number, cell: number) {
+    this.cells[cellAddr] = cell;
+  }
+
+  getReference(cellAddr: number) {
+    return this.cells[unmask(cellAddr)];
+  }
+
+  setReference(cellAddr: number, refAddr?: number) {
+    this.cells[unmask(cellAddr)] = refAddr ?? cellAddr;
   }
 }
