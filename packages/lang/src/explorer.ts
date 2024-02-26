@@ -1,8 +1,8 @@
 import { Program, Tag, tagNameOf, tagOf, unmask } from "./program";
 
-export class Debugger {
+export class Explorer {
   static default() {
-    return new Debugger();
+    return new Explorer();
   }
 
   print(program: Program) {

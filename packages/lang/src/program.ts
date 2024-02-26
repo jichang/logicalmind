@@ -56,7 +56,7 @@ export class Clause {
     // the base of the clause head
     public headAddr = 0,
     // the length of the head and thus the offset where the first body element starts (or the end of the clause if none)
-    public neckAdd = 0,
+    public neckAddr = 0,
     // the toplevel skeleton of a clause containing references to the location of its head and then body elements
     public goalAddrs: number[] = [],
     // the index vector containing dereferenced constants, numbers or array sizes as extracted from the outermost term
@@ -127,7 +127,7 @@ export class Program {
 
     return word;
   }
-  
+
   getCell(cellAddr: number) {
     return this.cells[cellAddr];
   }

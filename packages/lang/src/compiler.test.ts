@@ -99,7 +99,7 @@ describe('Compiler', () => {
     const clause = clauses[0];
     expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(2);
-    expect(clause.neckAdd).toBe(2);
+    expect(clause.neckAddr).toBe(2);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
     expect(clause.xs.length).toBe(1);
@@ -127,7 +127,7 @@ describe('Compiler', () => {
     const clause = clauses[0];
     expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(2);
-    expect(clause.neckAdd).toBe(2);
+    expect(clause.neckAddr).toBe(2);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
     expect(clause.xs.length).toBe(1);
@@ -157,7 +157,7 @@ describe('Compiler', () => {
     const clause = clauses[0];
     expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(3);
-    expect(clause.neckAdd).toBe(3);
+    expect(clause.neckAddr).toBe(3);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
     expect(clause.xs.length).toBe(2);
@@ -187,7 +187,7 @@ describe('Compiler', () => {
     const clause = clauses[0];
     expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(3);
-    expect(clause.neckAdd).toBe(3);
+    expect(clause.neckAddr).toBe(3);
     expect(clause.headAddr).toBe(0);
     expect(clause.goalAddrs.length).toBe(0);
     expect(clause.xs.length).toBe(2);
@@ -225,7 +225,7 @@ describe('Compiler', () => {
     expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(8);
     expect(clause.headAddr).toBe(0);
-    expect(clause.neckAdd).toBe(8);
+    expect(clause.neckAddr).toBe(8);
     expect(clause.goalAddrs.length).toBe(0);
     expect(clause.xs.length).toBe(4);
     expect(clause.xs[0]).toBe(3);
@@ -269,7 +269,7 @@ describe('Compiler', () => {
     expect(clause.baseAddr).toBe(0);
     expect(clause.len).toBe(13);
     expect(clause.headAddr).toBe(0);
-    expect(clause.neckAdd).toBe(8);
+    expect(clause.neckAddr).toBe(8);
     expect(clause.goalAddrs.length).toBe(1);
     expect(clause.goalAddrs[0]).toBe(8);
     expect(clause.xs.length).toBe(4);
@@ -325,7 +325,7 @@ describe('Compiler', () => {
     expect(firstClause.baseAddr).toBe(0);
     expect(firstClause.len).toBe(5);
     expect(firstClause.headAddr).toBe(0);
-    expect(firstClause.neckAdd).toBe(5);
+    expect(firstClause.neckAddr).toBe(5);
     expect(firstClause.goalAddrs.length).toBe(0);
     expect(firstClause.xs.length).toBe(4);
     expect(firstClause.xs[0]).toBe(3);
@@ -338,7 +338,7 @@ describe('Compiler', () => {
     expect(sndClause.baseAddr).toBe(5);
     expect(sndClause.len).toBe(16);
     expect(sndClause.headAddr).toBe(5);
-    expect(sndClause.neckAdd).toBe(16);
+    expect(sndClause.neckAddr).toBe(16);
     expect(sndClause.goalAddrs.length).toBe(1);
     expect(sndClause.goalAddrs[0]).toBe(16);
     expect(sndClause.xs.length).toBe(4);
