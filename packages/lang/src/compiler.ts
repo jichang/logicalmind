@@ -230,8 +230,8 @@ export class Compiler {
     }
   }
 
-  compile(atoms: Atom[]): CompilerResult<Program> {
-    const initial: CompilerResult<Program> = success(Program.empty());
+  compile(atoms: Atom[], symbols: string[] = []): CompilerResult<Program> {
+    const initial: CompilerResult<Program> = success(new Program([], symbols));
     return atoms.reduce((lastResult: CompilerResult<Program>, atom: Atom) => {
       if (isResultError(lastResult)) {
         return lastResult;

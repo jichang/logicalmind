@@ -87,7 +87,7 @@ describe('Engine', () => {
     expect(answer.xs[0]).toBe(3);
   })
 
-  it('should support fact query', () => {
+  it('should support exist fact query', () => {
     const code = "(a) (b)";
     const engine = new Engine();
     engine.load(code);
@@ -105,5 +105,19 @@ describe('Engine', () => {
     expect(answer.goalAddrs.length).toBe(0);
     expect(answer.xs.length).toBe(1);
     expect(answer.xs[0]).toBe(11);
+  })
+
+  it('should support non-exist fact query', () => {
+    const code = "(a) (b)";
+    const engine = new Engine();
+    engine.load(code);
+    const result = engine.query('(c)');
+
+    const answers: Clause[] = [];
+    for (const next of result) {
+      answers.push((next as ResultValue<Clause>).value);
+    }
+
+    expect(answers.length).toBe(0);
   })
 })
