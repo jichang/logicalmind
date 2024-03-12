@@ -1,6 +1,6 @@
 import { Compiler, CompilerError, CompilerErrorCode } from "./compiler";
 import { Atom, Parser, Tuple } from "./parser";
-import { Program, Clause } from "./program";
+import { Program, Clause, attachTag, Tag } from "./program";
 import { ResultError, ResultValue } from "./result";
 import { Stream } from "./stream";
 
@@ -89,8 +89,8 @@ describe('Compiler', () => {
     const compilerResult = compiler.compile(atoms) as ResultValue<Program>;
     const program: Program = compilerResult.value;
     expect(program.cells.length).toBe(2);
-    expect(program.cells[0]).toBe(5);
-    expect(program.cells[1]).toBe(3);
+    expect(program.cells[0]).toBe(attachTag(Tag.Arity, 0));
+    expect(program.cells[1]).toBe(attachTag(Tag.Symbol, 0));
     expect(program.symbols.length).toBe(1);
     expect(program.symbols[0]).toBe('a');
     expect(program.clauses.size).toBe(1);

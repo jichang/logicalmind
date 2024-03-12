@@ -1,5 +1,5 @@
 import { Atom, AtomKind, Identifier, Tuple, Variable } from "./parser";
-import { Program, Clause, Tag, mask } from "./program";
+import { Program, Clause, Tag, attachTag } from "./program";
 import { Result, failure, isResultError, success } from "./result";
 
 export enum CompilerErrorCode {
@@ -79,12 +79,12 @@ export class Compiler {
     const argsAtom = fact.atoms[1];
 
     const arity = this.determineArity(argsAtom);
-    const arityCell = mask(Tag.Arity, arity);
+    const arityCell = attachTag(Tag.Arity, arity);
     program.addCells(arityCell);
 
     const functorName = functorAtom.token.value;
     const symbolIndex = program.addSymbol(functorName);
-    const functorCell = mask(Tag.Symbol, symbolIndex);
+    const functorCell = attachTag(Tag.Symbol, symbolIndex);
     program.addCells(functorCell);
 
     if (!argsAtom) {
@@ -108,7 +108,7 @@ export class Compiler {
         case AtomKind.Identifier: {
           const identifier = argAtom.token.value;
           const symbolIndex = program.addSymbol(identifier);
-          const identifierCell = mask(Tag.Symbol, symbolIndex);
+          const identifierCell = attachTag(Tag.Symbol, symbolIndex);
           program.setCell(cellAddr, identifierCell);
         }
           break;
@@ -120,13 +120,13 @@ export class Compiler {
           }
           const variableTag = isVariableDeclared ? Tag.Use : Tag.Declare;
           const variableAddr = variables.get(variable) as number;
-          const variableCell = mask(variableTag, variableAddr);
+          const variableCell = attachTag(variableTag, variableAddr);
           program.setCell(cellAddr, variableCell);
         }
           break;
         case AtomKind.Tuple: {
           const subGoalAddr = program.size();
-          const referenceCell = mask(Tag.Reference, subGoalAddr);
+          const referenceCell = attachTag(Tag.Reference, subGoalAddr);
           program.setCell(cellAddr, referenceCell);
 
           const result = this.compileGoal(program, variables, argAtom);

@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "parcel build",
-    "test": "jest --passWithNoTests"
+    "test": "jest"
   },
   "repository": {
     "type": "git",

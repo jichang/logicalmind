@@ -4,4 +4,6 @@ module.exports = {
   testEnvironment: "jsdom",
   setupFiles: [],
   rootDir: "./src",
+  passWithNoTests: true,
+  verbose: true,
 };

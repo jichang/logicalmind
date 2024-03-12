@@ -1,16 +1,28 @@
-import { Program, Tag, tagNameOf, tagOf, unmask } from "./program";
+import { Program, Tag, extractTagName, extractTag, detachTag } from "./program";
+
+export function printCell(cell: number) {
+  const tagName = extractTagName(cell);
+  const tagValue = detachTag(cell);
+  return `[${tagName}:${tagValue}]`;
+}
 
 export class Explorer {
+  logs: any[] = [];
+
   static default() {
     return new Explorer();
+  }
+
+  log(...args: any) {
+    this.logs.push(args);
   }
 
   print(program: Program) {
     const cells =
       program.cells.map((cell, index) => {
-        const tag = tagOf(cell);
-        const tagName = tagNameOf(cell);
-        const tagValue = tag === Tag.Symbol ? program.symbols[unmask(cell)] : unmask(cell);
+        const tag = extractTag(cell);
+        const tagName = extractTagName(cell);
+        const tagValue = tag === Tag.Symbol ? program.symbols[detachTag(cell)] : detachTag(cell);
         return `[${index}]:${cell} = ${tagName} ${tagValue}`;
       }).join('\n');
 

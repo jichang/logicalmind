@@ -7,20 +7,20 @@ export enum Tag {
   Arity
 }
 
-export function mask(tag: Tag, word: number): number {
-  return word << 3 | tag;
+export function attachTag(tag: Tag, cell: number): number {
+  return cell << 3 | tag;
 }
 
-export function unmask(word: number): number {
-  return word >> 3
+export function detachTag(cell: number): number {
+  return cell >> 3
 }
 
-export function tagOf(word: number): Tag {
-  return (word & 0b111)
+export function extractTag(cell: number): Tag {
+  return (cell & 0b111)
 }
 
-export function tagNameOf(word: number): string {
-  const tag = tagOf(word) as Tag;
+export function extractTagName(cell: number): string {
+  const tag = extractTag(cell) as Tag;
   switch (tag) {
     case Tag.Declare:
       return 'Declare';
@@ -37,13 +37,13 @@ export function tagNameOf(word: number): string {
   }
 }
 
-export function isVariable(word: number) {
-  const tag = tagOf(word) as Tag;
+export function isVariableCell(cell: number) {
+  const tag = extractTag(cell) as Tag;
   return tag === Tag.Declare || tag === Tag.Use;
 }
 
-export function isReference(word: number) {
-  const tag = tagOf(word) as Tag;
+export function isReferenceCell(cell: number) {
+  const tag = extractTag(cell) as Tag;
   return tag === Tag.Reference;
 }
 
@@ -114,18 +114,18 @@ export class Program {
     this.cells.push(...cells);
   }
 
-  deref(word: number) {
-    while (isVariable(word)) {
-      const addr = unmask(word);
+  deref(cell: number) {
+    while (isVariableCell(cell)) {
+      const addr = detachTag(cell);
       let source = this.cells[addr];
-      if (source === word) {
+      if (source === cell) {
         break;
       }
 
-      source = word;
+      source = cell;
     }
 
-    return word;
+    return cell;
   }
 
   getCell(cellAddr: number) {
@@ -137,10 +137,10 @@ export class Program {
   }
 
   getReference(cellAddr: number) {
-    return this.cells[unmask(cellAddr)];
+    return this.cells[detachTag(cellAddr)];
   }
 
   setReference(cellAddr: number, refAddr?: number) {
-    this.cells[unmask(cellAddr)] = refAddr ?? cellAddr;
+    this.cells[detachTag(cellAddr)] = refAddr ?? cellAddr;
   }
 }

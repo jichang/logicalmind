@@ -1,12 +1,14 @@
 import { Compiler, CompilerError } from "./compiler";
+import { Explorer, printCell } from "./explorer";
 import { AtomKind, Parser, ParserError } from "./parser";
-import { Clause, Program, Tag, mask, tagOf, unmask } from "./program";
-import { Result, failure, isResultError, success } from "./result";
+import { Clause, Program, Tag, isReferenceCell, isVariableCell, attachTag, extractTag, detachTag } from "./program";
+import { Result, failure, isResultError, isResultValue, success } from "./result";
 import { Stream } from "./stream";
 
 export interface Frame {
   sourceAddr: number;
   targetAddr: number;
+  trails: number[];
 }
 
 export enum EngineErrorCode {
@@ -52,6 +54,8 @@ export class Engine {
   public frames: Frame[] = [];
   public program: Program | undefined;
 
+  constructor(public exploer: Explorer = new Explorer()) { }
+
   reset() {
     this.heap = [];
   }
@@ -76,39 +80,38 @@ export class Engine {
     return success(this.program);
   }
 
-  pushFrame(sourceAddr: number, targetAddr: number) {
-    this.frames.push({
-      sourceAddr,
-      targetAddr
-    })
+  pushFrame(frame: Frame) {
+    this.frames.push(frame)
   }
 
   popFrame() {
-    const frame = this.frames.pop();
-    if (!frame) {
-      return;
+    return this.frames.pop();
+  }
+
+  heapSize() {
+    return this.heap.length;
+  }
+
+  heapOffset() {
+    if (this.program === undefined) {
+      return 0;
     }
 
-    const { sourceAddr, targetAddr } = frame;
-    this.heap.splice(sourceAddr);
+    return this.program.size()
   }
 
   relocate(cell: number, offset: number) {
-    const tag = tagOf(cell);
+    const tag = extractTag(cell);
     if (tag === Tag.Declare || tag === Tag.Reference || tag === Tag.Use) {
-      const value = unmask(cell);
-      return mask(tag, value + offset);
+      const value = detachTag(cell);
+      return attachTag(tag, value + offset);
     }
 
     return cell;
   }
 
   copyToHeap(cells: number[], start: number, len: number) {
-    if (!this.program) {
-      return;
-    }
-
-    const offset = this.program.size() + this.heap.length;
+    const offset = this.heap.length - start;
 
     for (let i = 0; i < len; i++) {
       const cell = cells[start + i];
@@ -116,12 +119,107 @@ export class Engine {
     }
   }
 
-  *unify() {
-    const frame = this.frames[this.frames.length - 1];
-    const { sourceAddr, targetAddr } = frame;
+  getReferencedCell(cell: number) {
+    const addr = detachTag(cell);
+    return this.heap[addr]
+  }
 
-    const sourceCell = this.heap[sourceAddr];
-    const targetCell = this.heap[targetAddr];
+  deReference(cell: number): number {
+    if (isVariableCell(cell)) {
+      const ref = this.getReferencedCell(cell);
+      if (ref === cell) {
+        return cell;
+      }
+
+      return this.deReference(ref);
+    }
+
+    return cell;
+  }
+
+  writeHeapCell(addr: number, value: number) {
+    if (this.program === undefined) {
+      return 0;
+    }
+
+    this.heap[addr - this.program.size()] = value;
+  }
+
+  readHeapCell(addr: number) {
+    return this.heap[addr]
+  }
+
+  unifyCell(frame: Frame, sourceCellAddr: number, targetCellAddr: number) {
+    const sourceCell = this.deReference(this.readHeapCell(sourceCellAddr));
+    const targetCell = this.deReference(this.readHeapCell(targetCellAddr));
+    if (sourceCell === targetCell) {
+      return true;
+    }
+
+    const sourceCellIsVariableCell = isVariableCell(sourceCell);
+    const targetCellIsVariableCell = isVariableCell(targetCell);
+    if (sourceCellIsVariableCell || targetCellIsVariableCell) {
+      const sourceAddr = detachTag(sourceCell);
+      const targetAddr = detachTag(targetCell);
+
+      if (sourceCellIsVariableCell && targetCellIsVariableCell) {
+        if (sourceAddr > targetAddr) {
+          this.writeHeapCell(sourceAddr, targetCell);
+          frame.trails.push(sourceAddr);
+        } else {
+          this.writeHeapCell(targetAddr, sourceCell);
+          frame.trails.push(targetAddr);
+        }
+      } else if (sourceCellIsVariableCell) {
+        this.writeHeapCell(sourceAddr, targetCell);
+        frame.trails.push(sourceAddr);
+      } else {
+        this.writeHeapCell(targetAddr, sourceCell);
+        frame.trails.push(targetAddr);
+      }
+
+      return true;
+    } else if (isReferenceCell(sourceCell) && isReferenceCell(targetCell)) {
+      return false;
+    } else {
+      return false;
+    }
+  }
+
+  *unifyClause(sourceAddr: number, targetAddr: number) {
+    const frame: Frame = {
+      sourceAddr,
+      targetAddr,
+      trails: []
+    }
+    this.pushFrame(frame);
+
+    const sourceArityCell = this.readHeapCell(sourceAddr);
+    const targetArityCell = this.readHeapCell(targetAddr);
+    if (sourceArityCell !== targetArityCell) {
+      this.popFrame();
+      return success(false);
+    }
+
+    const sourceFunctorCell = this.readHeapCell(sourceAddr + 1);
+    const targetFunctorCell = this.readHeapCell(targetAddr + 1);
+    if (sourceFunctorCell !== targetFunctorCell) {
+      this.popFrame();
+      return success(false);
+    }
+
+    const arity = detachTag(sourceArityCell);
+
+    for (let i = 0; i < arity; i++) {
+      if (!this.unifyCell(frame, sourceAddr + i + 2, targetAddr + i + 2)) {
+        this.popFrame();
+        return success(false);
+      }
+    }
+
+    yield success(true);
+
+    this.popFrame();
   }
 
   *query(goal: string): Generator<EngineResult<Clause>, EngineResult<undefined>, unknown> {
@@ -195,14 +293,14 @@ export class Engine {
       this.copyToHeap(program.cells, 0, program.size());
       this.copyToHeap(this.program.cells, clause.headAddr, clause.len);
 
-      this.pushFrame(0, clause.len);
-
-      const generator = this.unify();
+      const generator = this.unifyClause(0, program.cells.length);
       for (const result of generator) {
-        // output result based on the frames and heap
+        if (isResultValue(result)) {
+          if (result.value) {
+            yield success(clause)
+          }
+        }
       }
-
-      this.popFrame();
     }
 
     return success(undefined);

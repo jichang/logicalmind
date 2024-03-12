@@ -1,4 +1,4 @@
-import { isVariable } from "./common";
+import { isVariableLiteral } from "./common";
 import { Result, failure, isResultError, success } from "./result";
 import { Stream } from "./stream";
 
@@ -212,7 +212,7 @@ export class Parser {
                 value,
                 position
               };
-              if (isVariable(value)) {
+              if (isVariableLiteral(value)) {
                 return collect([...atoms, { kind: AtomKind.Variable, token }])
               } else {
                 return collect([...atoms, { kind: AtomKind.Identifier, token }])
@@ -276,7 +276,7 @@ export class Parser {
           return result;
         } else {
           const atom: Atom = {
-            kind: isVariable(result.value) ? AtomKind.Variable : AtomKind.Identifier,
+            kind: isVariableLiteral(result.value) ? AtomKind.Variable : AtomKind.Identifier,
             token: {
               position,
               value: result.value

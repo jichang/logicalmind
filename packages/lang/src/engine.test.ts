@@ -1,5 +1,6 @@
 import { Engine, EngineResult } from "./engine";
-import { Clause, Program } from "./program";
+import { printCell } from "./explorer";
+import { Clause, Program, Tag, attachTag, detachTag } from "./program";
 import { ResultValue } from "./result";
 
 describe('Engine', () => {
@@ -67,6 +68,65 @@ describe('Engine', () => {
     expect(sndClause.xs[3]).toBe(106);
   })
 
+  it('should relocate cells for variables and reference', () => {
+    const engine = new Engine();
+    const value = 100;
+    const offset = 100;
+    for (const tag of [Tag.Use, Tag.Declare, Tag.Reference]) {
+      const cell = attachTag(tag, value);
+      const result = engine.relocate(cell, offset);
+      expect(detachTag(result)).toBe(value + offset);
+    }
+
+    for (const tag of [Tag.Arity, Tag.Integer, Tag.Symbol]) {
+      const cell = attachTag(tag, value);
+      const result = engine.relocate(cell, offset);
+      expect(detachTag(result)).toBe(value);
+    }
+  })
+
+  it('copyToHeap should relocate cells for variable and reference', () => {
+    const engine = new Engine();
+    engine.program = Program.empty();
+    engine.heap.push(attachTag(Tag.Arity, 1));
+
+    const cells = [
+      attachTag(Tag.Arity, 0),
+      attachTag(Tag.Declare, 1),
+      attachTag(Tag.Integer, 2),
+      attachTag(Tag.Reference, 3),
+      attachTag(Tag.Symbol, 4),
+      attachTag(Tag.Use, 1)
+    ];
+    engine.copyToHeap(cells, 0, cells.length);
+
+    expect(engine.heap[0]).toBe(attachTag(Tag.Arity, 1));
+    expect(engine.heap[1]).toBe(attachTag(Tag.Arity, 0));
+    expect(engine.heap[2]).toBe(attachTag(Tag.Declare, 2));
+    expect(engine.heap[3]).toBe(attachTag(Tag.Integer, 2));
+    expect(engine.heap[4]).toBe(attachTag(Tag.Reference, 4));
+    expect(engine.heap[5]).toBe(attachTag(Tag.Symbol, 4));
+    expect(engine.heap[6]).toBe(attachTag(Tag.Use, 2));
+  })
+
+  it('getRef should follow reference chain', () => {
+    const engine = new Engine();
+    engine.heap.push(attachTag(Tag.Declare, 0), attachTag(Tag.Use, 0), attachTag(Tag.Use, 0));
+
+    expect(engine.getReferencedCell(engine.heap[0])).toBe(0);
+    expect(engine.getReferencedCell(engine.heap[1])).toBe(0);
+    expect(engine.getReferencedCell(engine.heap[2])).toBe(0);
+  })
+
+  it('deReference should follow reference chain', () => {
+    const engine = new Engine();
+    engine.heap.push(attachTag(Tag.Declare, 0), attachTag(Tag.Use, 0), attachTag(Tag.Use, 1));
+
+    expect(engine.deReference(engine.heap[0])).toBe(0);
+    expect(engine.deReference(engine.heap[1])).toBe(0);
+    expect(engine.deReference(engine.heap[2])).toBe(0);
+  })
+
   it('should support fact query', () => {
     const code = "(a) (b)";
     const engine = new Engine();
@@ -119,5 +179,26 @@ describe('Engine', () => {
     }
 
     expect(answers.length).toBe(0);
+  })
+
+  it('should support exist fact query with variable', () => {
+    const code = "(a (b))";
+    const engine = new Engine();
+    engine.load(code);
+    const result = engine.query('(a (X))');
+
+    const answers: Clause[] = [];
+    for (const next of result) {
+      answers.push((next as ResultValue<Clause>).value);
+    }
+
+    expect(answers.length).toBe(1);
+    const answer = answers[0];
+    expect(answer.headAddr).toBe(0);
+    expect(answer.neckAddr).toBe(3);
+    expect(answer.goalAddrs.length).toBe(0);
+    expect(answer.xs.length).toBe(2);
+    expect(answer.xs[0]).toBe(3);
+    expect(answer.xs[1]).toBe(11);
   })
 })
