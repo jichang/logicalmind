@@ -37,9 +37,14 @@ export class QueryContext {
   popFrame() {
     const frame = this.frames.pop();
     if (frame) {
-      for (const addr of frame.trails.keys()) {
+      const { sourceAddr, targetAddr, trails } = frame;
+
+      for (const addr of trails.keys()) {
         this.writeHeapCell(addr, frame.trails.get(addr) as number)
       }
+
+      this.heap.splice(targetAddr)
+      this.heap.splice(sourceAddr)
     }
     return frame;
   }

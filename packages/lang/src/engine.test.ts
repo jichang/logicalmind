@@ -185,4 +185,35 @@ describe('Engine', () => {
     expect(answer.xs[1]).toBe(34);
     expect(answer.xs[2]).toBe(27);
   })
+
+  it('should support exist fact query with tuple contains variable in multiple clauses', () => {
+    const code = "(a ((e (c)) d)) (a ((b (c)) d)) (a ((b (e)) d))";
+    const engine = new Engine();
+    engine.load(code);
+    const result = engine.query('(a ((b (X)) d))');
+
+    const answers: Clause[] = [];
+    for (const next of result) {
+      answers.push((next as ResultValue<Clause>).value);
+    }
+
+    expect(answers.length).toBe(2);
+    const firstAnswer = answers[0];
+    expect(firstAnswer.headAddr).toBe(7);
+    expect(firstAnswer.neckAddr).toBe(14);
+    expect(firstAnswer.goalAddrs.length).toBe(0);
+    expect(firstAnswer.xs.length).toBe(3);
+    expect(firstAnswer.xs[0]).toBe(3);
+    expect(firstAnswer.xs[1]).toBe(90);
+    expect(firstAnswer.xs[2]).toBe(27);
+
+    const sndAnswer = answers[1];
+    expect(sndAnswer.headAddr).toBe(14);
+    expect(sndAnswer.neckAddr).toBe(21);
+    expect(sndAnswer.goalAddrs.length).toBe(0);
+    expect(sndAnswer.xs.length).toBe(3);
+    expect(sndAnswer.xs[0]).toBe(3);
+    expect(sndAnswer.xs[1]).toBe(146);
+    expect(sndAnswer.xs[2]).toBe(27);
+  })
 })

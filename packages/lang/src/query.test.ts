@@ -61,5 +61,4 @@ describe('QueryContext', () => {
     expect(queryContext.deReference(queryContext.heap[1])).toBe(0);
     expect(queryContext.deReference(queryContext.heap[2])).toBe(0);
   })
-
 })

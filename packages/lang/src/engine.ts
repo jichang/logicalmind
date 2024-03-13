@@ -204,6 +204,8 @@ export class Engine {
       context.copyToHeap(program.cells, 0, program.size());
       context.copyToHeap(this.program.cells, clause.headAddr, clause.len);
 
+      this.explorer.printQueryContext(context, this.program);
+
       const sourceAddr = 0;
       const targetAddr = program.cells.length;
       const frame: Frame = {
@@ -213,12 +215,15 @@ export class Engine {
       }
       context.pushFrame(frame);
       const result = this.unify(context, 0, program.cells.length);
+      this.explorer.printQueryContext(context, this.program);
       if (isResultValue(result)) {
         if (result.value) {
           yield success(clause)
         }
       }
       context.popFrame();
+
+      this.explorer.printQueryContext(context, this.program);
     }
 
     return success(undefined);
