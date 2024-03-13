@@ -19,9 +19,9 @@ export class EmptyExplorer {
   printProgram(program: Program) { }
 }
 
-export class Explorer implements IExplorer {
+export class ConsoleExplorer implements IExplorer {
   trackStep(step: string, ...args: any) {
-    console.log(`Execute step ${step}: ${args}`)
+    console.log(`Step ${step}: ${args}`)
   }
 
   printQueryContext(queryContext: QueryContext, program: Program) {
@@ -34,10 +34,10 @@ export class Explorer implements IExplorer {
       }).join('\n');
 
     const frames = queryContext.frames.map((frame) => {
-      return JSON.stringify(frame, undefined, 0);
+      return `SourceAddr: ${frame.sourceAddr}\nTargetAddr: ${frame.targetAddr}\nTrails: ${[...frame.trails.entries()]}`;
     }).join('\n');
 
-    console.log([`Heap:\n${cells}`, `Frames:\n${frames}`].join('\n\n'));
+    console.log([`QueryContext\nHeap:\n${cells}`, `Frames:\n${frames}`].join('\n\n'));
   }
 
   printProgram(program: Program) {
@@ -62,7 +62,7 @@ export class Explorer implements IExplorer {
       return `${clauseKey}\n${clauses}`
     }).join('\n')
 
-    console.log([`Cells:\n${cells}`, `Symbols:\n${symbols}`, `Clauses:\n${clauses}`].join('\n\n'));
+    console.log([`Program\nCells:\n${cells}`, `Symbols:\n${symbols}`, `Clauses:\n${clauses}`].join('\n\n'));
   }
 }
 

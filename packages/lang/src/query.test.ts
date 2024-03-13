@@ -1,4 +1,4 @@
-import { Tag, attachTag, detachTag, Program } from "./program";
+import { Tag, attachTag, detachTag, Program, Clause } from "./program";
 import { QueryContext } from "./query";
 
 describe('QueryContext', () => {
@@ -33,7 +33,10 @@ describe('QueryContext', () => {
       attachTag(Tag.Symbol, 4),
       attachTag(Tag.Use, 1)
     ];
-    queryContext.copyToHeap(cells, 0, cells.length);
+    const clause = new Clause()
+    clause.baseAddr = 0;
+    clause.len = cells.length;
+    queryContext.copyToHeap(cells, clause);
 
     expect(queryContext.heap[0]).toBe(attachTag(Tag.Arity, 1));
     expect(queryContext.heap[1]).toBe(attachTag(Tag.Arity, 0));

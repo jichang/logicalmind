@@ -49,6 +49,8 @@ export function isReferenceCell(cell: number) {
 
 export class Clause {
   constructor(
+    // the key of clause
+    public key = "",
     // the base of the heap where the cells for the clause start
     public baseAddr = 0,
     // the length of the code of the clause i.e., number of the heap cells the clause occupies
@@ -63,6 +65,17 @@ export class Clause {
     // of the head of the clause, with 0 values marking variable positions
     public xs: number[] = []
   ) { }
+
+  relocate(offset: number): Clause {
+    return new Clause(this.key,
+      this.baseAddr + offset,
+      this.len, this.headAddr + offset,
+      this.neckAddr + offset,
+      this.goalAddrs.map(addr => {
+        return addr + offset
+      }),
+      this.xs);
+  }
 
   static empty() {
     return new Clause();

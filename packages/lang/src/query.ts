@@ -1,4 +1,4 @@
-import { Program, Tag, attachTag, detachTag, extractTag, isVariableCell } from "./program";
+import { Clause, Program, Tag, attachTag, detachTag, extractTag, isVariableCell } from "./program";
 
 export interface Frame {
   sourceAddr: number;
@@ -6,23 +6,10 @@ export interface Frame {
   trails: Map<number, number>;
 }
 
-export enum UnifyErrorCode {
-  Unknown = 0,
-  UnmatchArity,
-  UnmatchFunctor,
-  UnmatchArg,
-}
-
-export class UnifyError extends Error {
-  constructor(public code: UnifyErrorCode) {
-    super("UnifyError");
-  }
-}
-
-
 export class QueryContext {
   heap: number[] = [];
   frames: Frame[] = [];
+  clauses: Map<string, Clause[]> = new Map();
 
   constructor(public program: Program) { }
 
@@ -34,7 +21,7 @@ export class QueryContext {
     return this.frames[this.frames.length - 1];
   }
 
-  popFrame() {
+  popFrame(clearSourceCell: boolean) {
     const frame = this.frames.pop();
     if (frame) {
       const { sourceAddr, targetAddr, trails } = frame;
@@ -44,7 +31,9 @@ export class QueryContext {
       }
 
       this.heap.splice(targetAddr)
-      this.heap.splice(sourceAddr)
+      if (clearSourceCell) {
+        this.heap.splice(sourceAddr)
+      }
     }
     return frame;
   }
@@ -63,13 +52,22 @@ export class QueryContext {
     return cell;
   }
 
-  copyToHeap(cells: number[], start: number, len: number) {
+  copyToHeap(cells: number[], clause: Clause) {
+    const start = clause.baseAddr;
+    const len = clause.len;
     const offset = this.heap.length - start;
 
     for (let i = 0; i < len; i++) {
       const cell = cells[start + i];
       this.heap.push(this.relocate(cell, offset));
     }
+
+    const relocatedClause = clause.relocate(offset)
+
+    const clauses = this.clauses.get(clause.key) || [];
+    this.clauses.set(clause.key, [...clauses, relocatedClause]);
+
+    return relocatedClause;
   }
 
   getReferencedCell(cell: number) {

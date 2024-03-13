@@ -214,7 +214,7 @@ export class Compiler {
       xs.push(deref);
     }
 
-    const clause = new Clause(headAddr, len, headAddr, neckAddr, goalAddrs, xs);
+    const clause = new Clause(clauseKey, headAddr, len, headAddr, neckAddr, goalAddrs, xs);
     program.addClause(clauseKey, clause);
     return success(program);
   }

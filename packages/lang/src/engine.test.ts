@@ -1,4 +1,5 @@
 import { Engine } from "./engine";
+import { ConsoleExplorer } from "./explorer";
 import { Clause, Program } from "./program";
 import { ResultValue } from "./result";
 
@@ -215,5 +216,56 @@ describe('Engine', () => {
     expect(sndAnswer.xs[0]).toBe(3);
     expect(sndAnswer.xs[1]).toBe(146);
     expect(sndAnswer.xs[2]).toBe(27);
+  })
+
+  it('should support exist rule query with tuple contains variable in multiple clauses', () => {
+    const code = "(f (c)) (a ((e (X)) d) ((f (X))))";
+    const engine = new Engine();
+    engine.load(code);
+    const result = engine.query('(a ((e (c)) d))');
+
+    const answers: Clause[] = [];
+    for (const next of result) {
+      answers.push((next as ResultValue<Clause>).value);
+    }
+
+    expect(answers.length).toBe(1);
+    const answer = answers[0];
+    expect(answer.headAddr).toBe(3);
+    expect(answer.neckAddr).toBe(10);
+    expect(answer.goalAddrs.length).toBe(1);
+    expect(answer.goalAddrs[0]).toBe(10);
+    expect(answer.xs.length).toBe(3);
+    expect(answer.xs[0]).toBe(19);
+    expect(answer.xs[1]).toBe(58);
+    expect(answer.xs[2]).toBe(35);
+  })
+
+  it('should support exist rule query with tuple contains variable in multiple clauses', () => {
+    const code = "(f (d)) (a ((e (X)) d) ((f (X))))";
+    const engine = new Engine();
+    engine.load(code);
+    const result = engine.query('(a ((e (c)) d))');
+
+    const answers: Clause[] = [];
+    for (const next of result) {
+      answers.push((next as ResultValue<Clause>).value);
+    }
+
+    expect(answers.length).toBe(0);
+  })
+
+  it('should support multiple rule query with tuple contains variable in multiple clauses', () => {
+    const code = "(f (d)) (f (c)) (a ((e (X)) d) ((f (X))))";
+    const engine = new Engine();
+    engine.load(code);
+    const result = engine.query('(a ((e (X)) d))');
+
+    const answers: Clause[] = [];
+    for (const next of result) {
+      answers.push((next as ResultValue<Clause>).value);
+    }
+
+    expect(answers.length).toBe(2);
   })
 })
