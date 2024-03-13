@@ -1,3 +1,4 @@
+import { QueryContext } from "./query";
 import { Program, Tag, extractTagName, extractTag, detachTag } from "./program";
 
 export function printCell(cell: number) {
@@ -6,18 +7,40 @@ export function printCell(cell: number) {
   return `[${tagName}:${tagValue}]`;
 }
 
-export class Explorer {
-  logs: any[] = [];
+export interface IExplorer {
+  trackStep(step: string, ...args: any): void;
+  printQueryContext(queryContext: QueryContext, program: Program): void;
+  printProgram(program: Program): void;
+}
 
-  static default() {
-    return new Explorer();
+export class EmptyExplorer {
+  trackStep(step: string, ...args: any) { }
+  printQueryContext(queryContext: QueryContext, program: Program) { }
+  printProgram(program: Program) { }
+}
+
+export class Explorer implements IExplorer {
+  trackStep(step: string, ...args: any) {
+    console.log(`Execute step ${step}: ${args}`)
   }
 
-  log(...args: any) {
-    this.logs.push(args);
+  printQueryContext(queryContext: QueryContext, program: Program) {
+    const cells =
+      queryContext.heap.map((cell, index) => {
+        const tag = extractTag(cell);
+        const tagName = extractTagName(cell);
+        const tagValue = tag === Tag.Symbol ? program.symbols[detachTag(cell)] : detachTag(cell);
+        return `[${index}]:${cell} = ${tagName} ${tagValue}`;
+      }).join('\n');
+
+    const frames = queryContext.frames.map((frame) => {
+      return JSON.stringify(frame, undefined, 0);
+    }).join('\n');
+
+    console.log([`Heap:\n${cells}`, `Frames:\n${frames}`].join('\n\n'));
   }
 
-  print(program: Program) {
+  printProgram(program: Program) {
     const cells =
       program.cells.map((cell, index) => {
         const tag = extractTag(cell);

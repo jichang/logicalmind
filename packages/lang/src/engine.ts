@@ -1,15 +1,10 @@
 import { Compiler, CompilerError } from "./compiler";
-import { Explorer, printCell } from "./explorer";
+import { EmptyExplorer, IExplorer } from "./explorer";
 import { AtomKind, Parser, ParserError } from "./parser";
-import { Clause, Program, Tag, isReferenceCell, isVariableCell, attachTag, extractTag, detachTag } from "./program";
+import { Clause, Program, isReferenceCell, isVariableCell, detachTag } from "./program";
+import { Frame, QueryContext, UnifyError, UnifyErrorCode } from "./query";
 import { Result, failure, isResultError, isResultValue, success } from "./result";
 import { Stream } from "./stream";
-
-export interface Frame {
-  sourceAddr: number;
-  targetAddr: number;
-  trails: number[];
-}
 
 export enum EngineErrorCode {
   Unknown = 0,
@@ -50,15 +45,9 @@ export type EngineResult<V> = Result<EngineError, V>;
 export class Engine {
   public parser: Parser = new Parser();
   public compiler: Compiler = new Compiler();
-  public heap: number[] = [];
-  public frames: Frame[] = [];
   public program: Program | undefined;
 
-  constructor(public exploer: Explorer = new Explorer()) { }
-
-  reset() {
-    this.heap = [];
-  }
+  constructor(public explorer: IExplorer = new EmptyExplorer()) { }
 
   load(code: string): EngineResult<Program> {
     const stream = new Stream(code, 0);
@@ -80,82 +69,14 @@ export class Engine {
     return success(this.program);
   }
 
-  pushFrame(frame: Frame) {
-    this.frames.push(frame)
-  }
-
-  popFrame() {
-    return this.frames.pop();
-  }
-
-  heapSize() {
-    return this.heap.length;
-  }
-
-  heapOffset() {
-    if (this.program === undefined) {
-      return 0;
-    }
-
-    return this.program.size()
-  }
-
-  relocate(cell: number, offset: number) {
-    const tag = extractTag(cell);
-    if (tag === Tag.Declare || tag === Tag.Reference || tag === Tag.Use) {
-      const value = detachTag(cell);
-      return attachTag(tag, value + offset);
-    }
-
-    return cell;
-  }
-
-  copyToHeap(cells: number[], start: number, len: number) {
-    const offset = this.heap.length - start;
-
-    for (let i = 0; i < len; i++) {
-      const cell = cells[start + i];
-      this.heap.push(this.relocate(cell, offset));
-    }
-  }
-
-  getReferencedCell(cell: number) {
-    const addr = detachTag(cell);
-    return this.heap[addr]
-  }
-
-  deReference(cell: number): number {
-    if (isVariableCell(cell)) {
-      const ref = this.getReferencedCell(cell);
-      if (ref === cell) {
-        return cell;
-      }
-
-      return this.deReference(ref);
-    }
-
-    return cell;
-  }
-
-  writeHeapCell(addr: number, value: number) {
-    if (this.program === undefined) {
-      return 0;
-    }
-
-    this.heap[addr - this.program.size()] = value;
-  }
-
-  readHeapCell(addr: number) {
-    return this.heap[addr]
-  }
-
-  unifyCell(frame: Frame, sourceCellAddr: number, targetCellAddr: number) {
-    const sourceCell = this.deReference(this.readHeapCell(sourceCellAddr));
-    const targetCell = this.deReference(this.readHeapCell(targetCellAddr));
+  unifyCell(context: QueryContext, sourceCellAddr: number, targetCellAddr: number): Result<UnifyError, boolean> {
+    const sourceCell = context.deReference(context.readHeapCell(sourceCellAddr));
+    const targetCell = context.deReference(context.readHeapCell(targetCellAddr));
     if (sourceCell === targetCell) {
-      return true;
+      return success(true);
     }
 
+    const frame = context.getTopFrame();
     const sourceCellIsVariableCell = isVariableCell(sourceCell);
     const targetCellIsVariableCell = isVariableCell(targetCell);
     if (sourceCellIsVariableCell || targetCellIsVariableCell) {
@@ -164,62 +85,51 @@ export class Engine {
 
       if (sourceCellIsVariableCell && targetCellIsVariableCell) {
         if (sourceAddr > targetAddr) {
-          this.writeHeapCell(sourceAddr, targetCell);
-          frame.trails.push(sourceAddr);
+          context.writeHeapCell(sourceAddr, targetCell);
+          frame.trails.set(sourceAddr, sourceCell);
         } else {
-          this.writeHeapCell(targetAddr, sourceCell);
-          frame.trails.push(targetAddr);
+          context.writeHeapCell(targetAddr, sourceCell);
+          frame.trails.set(targetAddr, targetCell);
         }
       } else if (sourceCellIsVariableCell) {
-        this.writeHeapCell(sourceAddr, targetCell);
-        frame.trails.push(sourceAddr);
+        context.writeHeapCell(sourceAddr, targetCell);
+        frame.trails.set(sourceAddr, sourceCell);
       } else {
-        this.writeHeapCell(targetAddr, sourceCell);
-        frame.trails.push(targetAddr);
+        context.writeHeapCell(targetAddr, sourceCell);
+        frame.trails.set(targetAddr, targetCell);
       }
 
-      return true;
+      return success(true);
     } else if (isReferenceCell(sourceCell) && isReferenceCell(targetCell)) {
-      return false;
+      return this.unify(context, detachTag(sourceCell), detachTag(targetCell));
     } else {
-      return false;
+      return success(false);
     }
   }
 
-  *unifyClause(sourceAddr: number, targetAddr: number) {
-    const frame: Frame = {
-      sourceAddr,
-      targetAddr,
-      trails: []
-    }
-    this.pushFrame(frame);
-
-    const sourceArityCell = this.readHeapCell(sourceAddr);
-    const targetArityCell = this.readHeapCell(targetAddr);
+  unify(context: QueryContext, sourceAddr: number, targetAddr: number): Result<UnifyError, boolean> {
+    const sourceArityCell = context.readHeapCell(sourceAddr);
+    const targetArityCell = context.readHeapCell(targetAddr);
     if (sourceArityCell !== targetArityCell) {
-      this.popFrame();
-      return success(false);
+      return failure(new UnifyError(UnifyErrorCode.UnmatchArity));
     }
 
-    const sourceFunctorCell = this.readHeapCell(sourceAddr + 1);
-    const targetFunctorCell = this.readHeapCell(targetAddr + 1);
+    const sourceFunctorCell = context.readHeapCell(sourceAddr + 1);
+    const targetFunctorCell = context.readHeapCell(targetAddr + 1);
     if (sourceFunctorCell !== targetFunctorCell) {
-      this.popFrame();
-      return success(false);
+      return failure(new UnifyError(UnifyErrorCode.UnmatchFunctor));
     }
 
     const arity = detachTag(sourceArityCell);
 
     for (let i = 0; i < arity; i++) {
-      if (!this.unifyCell(frame, sourceAddr + i + 2, targetAddr + i + 2)) {
-        this.popFrame();
-        return success(false);
+      const result = this.unifyCell(context, sourceAddr + i + 2, targetAddr + i + 2)
+      if (isResultError(result)) {
+        return failure(new UnifyError(UnifyErrorCode.UnmatchArg));
       }
     }
 
-    yield success(true);
-
-    this.popFrame();
+    return success(true);
   }
 
   *query(goal: string): Generator<EngineResult<Clause>, EngineResult<undefined>, unknown> {
@@ -288,19 +198,27 @@ export class Engine {
     }
 
     const program = compilerResult.value;
+    const context = new QueryContext(program);
 
     for (const clause of clauses) {
-      this.copyToHeap(program.cells, 0, program.size());
-      this.copyToHeap(this.program.cells, clause.headAddr, clause.len);
+      context.copyToHeap(program.cells, 0, program.size());
+      context.copyToHeap(this.program.cells, clause.headAddr, clause.len);
 
-      const generator = this.unifyClause(0, program.cells.length);
-      for (const result of generator) {
-        if (isResultValue(result)) {
-          if (result.value) {
-            yield success(clause)
-          }
+      const sourceAddr = 0;
+      const targetAddr = program.cells.length;
+      const frame: Frame = {
+        sourceAddr,
+        targetAddr,
+        trails: new Map()
+      }
+      context.pushFrame(frame);
+      const result = this.unify(context, 0, program.cells.length);
+      if (isResultValue(result)) {
+        if (result.value) {
+          yield success(clause)
         }
       }
+      context.popFrame();
     }
 
     return success(undefined);

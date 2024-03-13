@@ -16,6 +16,7 @@
     "dist/types"
   ],
   "scripts": {
+    "demo": "ts-node ./demo/main.ts",
     "build": "parcel build",
     "test": "jest"
   },
@@ -41,6 +42,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "parcel": "^2.11.0",
     "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }
