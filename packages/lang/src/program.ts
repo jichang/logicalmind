@@ -130,12 +130,12 @@ export class Program {
   deref(cell: number) {
     while (isVariableCell(cell)) {
       const addr = detachTag(cell);
-      let source = this.cells[addr];
+      let source = this.getCell(addr);
       if (source === cell) {
         break;
       }
 
-      source = cell;
+      cell = source;
     }
 
     return cell;
@@ -155,5 +155,62 @@ export class Program {
 
   setReference(cellAddr: number, refAddr?: number) {
     this.cells[detachTag(cellAddr)] = refAddr ?? cellAddr;
+  }
+
+  exportTerm(addr: number, variables = new Map<number, number>()): string {
+    const cell = this.getCell(addr);
+
+    const tag = extractTag(cell);
+    switch (tag) {
+      case Tag.Arity: {
+        const arity = detachTag(cell);
+        const functorName = this.symbols[detachTag(this.getCell(addr + 1))];
+        const args: string[] = [];
+        for (let i = 0; i < arity; i++) {
+          args.push(this.exportTerm(addr + 2 + i, variables));
+        }
+
+        return `(${functorName} (${args.join(' ')}))`;
+      }
+      case Tag.Integer:
+        return detachTag(cell).toString();
+      case Tag.Declare: {
+        const index = variables.size;
+        variables.set(cell, index);
+        return `X${index}`;
+      }
+      case Tag.Symbol:
+        return this.symbols[detachTag(cell)];
+      case Tag.Use: {
+        const variable = variables.get(this.deref(cell));
+        return variable !== undefined ? `X${variable}` : 'None';
+      }
+      case Tag.Reference: {
+        const addr = detachTag(cell);
+        return this.exportTerm(addr, variables);
+      }
+    }
+  }
+
+  exportClause(clause: Clause) {
+    const baseAddr = clause.baseAddr;
+    const arity = detachTag(this.getCell(baseAddr));
+    const functorName = this.symbols[detachTag(this.getCell(baseAddr + 1))];
+
+    const variables = new Map<number, number>();
+
+    const args: string[] = [];
+    for (let i = 0; i < arity; i++) {
+      args.push(this.exportTerm(baseAddr + 2 + i, variables));
+    }
+
+    const goals: string[] = [];
+    if (clause.goalAddrs.length > 0) {
+      for (const goalAddr of clause.goalAddrs) {
+        goals.push(this.exportTerm(goalAddr, variables))
+      }
+    }
+
+    return `(${functorName} (${args.join(' ')}) (${goals.join(' ')}))`
   }
 }

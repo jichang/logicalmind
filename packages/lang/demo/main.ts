@@ -6,10 +6,14 @@ import { ResultValue } from "../src/result";
 const code = "(a (b))";
 const engine = new Engine();
 engine.load(code);
-const result = engine.query('(a (X))');
+const result = engine.query({ goal: '(a (X))' });
 
 const answers: Clause[] = [];
 for (const next of result) {
-  answers.push((next as ResultValue<Clause>).value);
+  if (next.kind === 'Value') {
+    answers.push(next.value.clause);
+  }
 }
+
+console.log(answers);
 

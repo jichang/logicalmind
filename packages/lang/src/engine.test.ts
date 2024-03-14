@@ -1,5 +1,4 @@
 import { Engine } from "./engine";
-import { ConsoleExplorer } from "./explorer";
 import { Clause, Program } from "./program";
 import { ResultValue } from "./result";
 
@@ -72,11 +71,13 @@ describe('Engine', () => {
     const code = "(a) (b)";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a)');
+    const result = engine.query({ goal: '(a)' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(1);
@@ -92,11 +93,13 @@ describe('Engine', () => {
     const code = "(a) (b)";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(b)');
+    const result = engine.query({ goal: '(b)' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(1);
@@ -112,11 +115,13 @@ describe('Engine', () => {
     const code = "(a) (b)";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(c)');
+    const result = engine.query({ goal: '(c)' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(0);
@@ -126,11 +131,13 @@ describe('Engine', () => {
     const code = "(a (b))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a (X))');
+    const result = engine.query({ goal: '(a (X))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(1);
@@ -147,11 +154,13 @@ describe('Engine', () => {
     const code = "(a ((b (A)) c))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a (X c))');
+    const result = engine.query({ goal: '(a (X c))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(1);
@@ -169,11 +178,13 @@ describe('Engine', () => {
     const code = "(a ((b (c)) d))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a ((b (X)) d))');
+    const result = engine.query({ goal: '(a ((b (X)) d))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(1);
@@ -191,11 +202,13 @@ describe('Engine', () => {
     const code = "(a ((e (c)) d)) (a ((b (c)) d)) (a ((b (e)) d))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a ((b (X)) d))');
+    const result = engine.query({ goal: '(a ((b (X)) d))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(2);
@@ -222,11 +235,13 @@ describe('Engine', () => {
     const code = "(f (c)) (a ((e (X)) d) ((f (X))))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a ((e (c)) d))');
+    const result = engine.query({ goal: '(a ((e (c)) d))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(1);
@@ -245,11 +260,13 @@ describe('Engine', () => {
     const code = "(f (d)) (a ((e (X)) d) ((f (X))))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a ((e (c)) d))');
+    const result = engine.query({ goal: '(a ((e (c)) d))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        answers.push(next.value.clause);
+      }
     }
 
     expect(answers.length).toBe(0);
@@ -259,11 +276,14 @@ describe('Engine', () => {
     const code = "(f (d)) (f (c)) (a ((e (X)) d) ((f (X))))";
     const engine = new Engine();
     engine.load(code);
-    const result = engine.query('(a ((e (X)) d))');
+    const result = engine.query({ goal: '(a ((e (X)) d))' });
 
     const answers: Clause[] = [];
     for (const next of result) {
-      answers.push((next as ResultValue<Clause>).value);
+      if (next.kind === 'Value') {
+        const { clause } = next.value;
+        answers.push(clause);
+      }
     }
 
     expect(answers.length).toBe(2);

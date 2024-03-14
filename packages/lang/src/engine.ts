@@ -2,7 +2,7 @@ import { Compiler, CompilerError } from "./compiler";
 import { EmptyExplorer, IExplorer } from "./explorer";
 import { AtomKind, Parser, ParserError } from "./parser";
 import { Clause, Program, isReferenceCell, isVariableCell, detachTag } from "./program";
-import { Frame, QueryContext } from "./query";
+import { Answer, Frame, Query, QueryContext } from "./query";
 import { Result, failure, isResultError, isResultValue, success } from "./result";
 import { Stream } from "./stream";
 
@@ -181,7 +181,9 @@ export class Engine {
     return success(true);
   }
 
-  *query(goal: string): Generator<EngineResult<Clause>, EngineResult<undefined>, unknown> {
+  *query(query: Query): Generator<EngineResult<Answer>, EngineResult<undefined>, unknown> {
+    const { goal } = query;
+
     if (this.program === undefined) {
       const error = new EngineError({ code: EngineErrorCode.ProgramNotLoaded });
       return failure(error);
@@ -227,15 +229,7 @@ export class Engine {
       return success(undefined);
     }
 
-    if (atom.atoms.length === 1) {
-      for (const clause of clauses) {
-        yield success(clause);
-      }
-
-      return success(undefined);
-    }
-
-    if (atom.atoms.length !== 2) {
+    if (atom.atoms.length !== 2 && atom.atoms.length !== 1) {
       const error = new EngineError({ code: EngineErrorCode.InvalidQuery });
       return failure(error);
     }
@@ -272,7 +266,7 @@ export class Engine {
       if (isResultValue(result)) {
         if (result.value) {
           if (clause.goalAddrs.length === 0) {
-            yield success(clause)
+            yield success({ clause, program: this.program, context })
           } else {
             for (const goalAddr of relocatedClause.goalAddrs) {
               const arity = detachTag(context.readHeapCell(goalAddr));
@@ -303,7 +297,7 @@ export class Engine {
                     if (result.value) {
                       this.explorer.trackStep(QueryStep.ReturnAnswer, clause);
                       this.explorer.printQueryContext(context, this.program);
-                      yield success(clause)
+                      yield success({ clause, program: this.program, context })
                     }
                   }
 

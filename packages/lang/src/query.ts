@@ -6,6 +6,10 @@ export interface Frame {
   trails: Map<number, number>;
 }
 
+export interface Query {
+  goal: string;
+}
+
 export class QueryContext {
   heap: number[] = [];
   frames: Frame[] = [];
@@ -95,4 +99,10 @@ export class QueryContext {
   writeHeapCell(addr: number, cell: number) {
     this.heap[addr] = cell;
   }
+}
+
+export interface Answer {
+  context: QueryContext;
+  clause: Clause;
+  program: Program;
 }
