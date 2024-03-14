@@ -1,0 +1,32 @@
+{
+  "name": "@logice/playground",
+  "version": "1.0.0",
+  "description": "Playground for Logice",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "parcel ./src/index.html",
+    "build": "parcel build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jichang/logice.git"
+  },
+  "author": "Ji Chang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jichang/logice/issues"
+  },
+  "homepage": "https://github.com/jichang/logice#readme",
+  "dependencies": {
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/view": "^6.25.1",
+    "@logice/lang": "^1.0.0",
+    "@types/react": "^18.2.65",
+    "@types/react-dom": "^18.2.22",
+    "codemirror": "^6.0.1",
+    "parcel": "^2.12.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
