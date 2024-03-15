@@ -1,3 +1,4 @@
+import { composeClauseKey, determineArity } from "./common";
 import { Atom, AtomKind, Identifier, Tuple, Variable } from "./parser";
 import { Program, Clause, Tag, attachTag } from "./program";
 import { Result, failure, isResultError, success } from "./result";
@@ -25,35 +26,6 @@ export class CompilerError extends Error {
 export type CompilerResult<V> = Result<CompilerError, V>;
 
 export class Compiler {
-  parseFunctorName(atom: Atom): CompilerResult<string> {
-    switch (atom.kind) {
-      case AtomKind.Identifier:
-        return success(atom.token.value);
-      case AtomKind.Variable:
-        return failure(new CompilerError(CompilerErrorCode.VariableAsFunctor, atom));
-      case AtomKind.Tuple:
-        return failure(new CompilerError(CompilerErrorCode.TupleAsFunctor, atom));
-    }
-  }
-
-  composeClauseKey(functorName: string, arity: number) {
-    return `${functorName}/${arity}`;
-  }
-
-  determineArity(atom: Atom | undefined) {
-    if (!atom) {
-      return 0;
-    }
-
-    switch (atom.kind) {
-      case AtomKind.Identifier:
-      case AtomKind.Variable:
-        return 1;
-      case AtomKind.Tuple:
-        return atom.atoms.length;
-    }
-  }
-
   compileGoal(program: Program, variables: Map<string, number>, fact: Tuple): CompilerResult<Program> {
     if (fact.atoms.length === 0) {
       return success(program);
@@ -78,7 +50,7 @@ export class Compiler {
 
     const argsAtom = fact.atoms[1];
 
-    const arity = this.determineArity(argsAtom);
+    const arity = determineArity(argsAtom);
     const arityCell = attachTag(Tag.Arity, arity);
     program.addCells(arityCell);
 
@@ -202,9 +174,9 @@ export class Compiler {
     }
 
     const functorName = (functorAtom as Identifier).token.value;
-    const arity = this.determineArity(argsAtom);
+    const arity = determineArity(argsAtom);
     const len = program.size() - headAddr;
-    const clauseKey = this.composeClauseKey(functorName, arity);
+    const clauseKey = composeClauseKey(functorName, arity);
     const xs: number[] = [];
 
     for (let i = 0; i < Program.MaxArgIndex && i <= arity; i++) {

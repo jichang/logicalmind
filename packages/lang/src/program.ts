@@ -1,3 +1,8 @@
+import { Compiler, CompilerError } from "./compiler";
+import { Parser, ParserError } from "./parser";
+import { isResultError, failure, success, Result } from "./result";
+import { Stream } from "./stream";
+
 export enum Tag {
   Declare = 0,
   Use,
@@ -82,6 +87,25 @@ export class Clause {
   }
 }
 
+export enum ProgramErrorCode {
+  ParserError,
+  CompilerError,
+}
+
+export type ProgramInnerError = {
+  code: ProgramErrorCode.ParserError;
+  error: ParserError;
+} | {
+  code: ProgramErrorCode.CompilerError,
+  error: CompilerError;
+}
+
+export class ProgramError extends Error {
+  constructor(public innerError: ProgramInnerError) {
+    super();
+  }
+}
+
 export class Program {
   static MaxArgIndex = 4;
 
@@ -93,6 +117,28 @@ export class Program {
 
   static empty() {
     return new Program();
+  }
+
+  static load(code: string): Result<ProgramError, Program> {
+    const stream = new Stream(code, 0);
+    const parser = new Parser();
+    const parserResult = parser.parse(stream, []);
+    if (isResultError(parserResult)) {
+      const error = new ProgramError({ code: ProgramErrorCode.ParserError, error: parserResult.error });
+      return failure(error);
+    }
+
+    const atoms = parserResult.value;
+    const compiler = new Compiler();
+    const compilerResult = compiler.compile(atoms);
+    if (isResultError(compilerResult)) {
+      const error = new ProgramError({ code: ProgramErrorCode.CompilerError, error: compilerResult.error });
+      return failure(error);
+    }
+
+    const program = compilerResult.value;
+
+    return success(program);
   }
 
   size() {
@@ -193,15 +239,22 @@ export class Program {
   }
 
   exportClause(clause: Clause) {
+    const parts = ['('];
+
     const baseAddr = clause.baseAddr;
     const arity = detachTag(this.getCell(baseAddr));
     const functorName = this.symbols[detachTag(this.getCell(baseAddr + 1))];
+    parts.push(functorName);
 
     const variables = new Map<number, number>();
 
-    const args: string[] = [];
-    for (let i = 0; i < arity; i++) {
-      args.push(this.exportTerm(baseAddr + 2 + i, variables));
+    if (arity > 0) {
+      const args: string[] = [];
+      for (let i = 0; i < arity; i++) {
+        args.push(this.exportTerm(baseAddr + 2 + i, variables));
+      }
+
+      parts.push(`(${args.join(' ')})`);
     }
 
     const goals: string[] = [];
@@ -209,8 +262,11 @@ export class Program {
       for (const goalAddr of clause.goalAddrs) {
         goals.push(this.exportTerm(goalAddr, variables))
       }
+      parts.push((`${goals.join(' ')})`));
     }
 
-    return `(${functorName} (${args.join(' ')}) (${goals.join(' ')}))`
+    parts.push(')')
+
+    return parts.join(' ');
   }
 }

@@ -9,13 +9,13 @@ export function printCell(cell: number) {
 
 export interface IExplorer {
   trackStep(step: string, ...args: any): void;
-  printQueryContext(queryContext: QueryContext, program: Program): void;
+  printQueryContext(queryContext: QueryContext): void;
   printProgram(program: Program): void;
 }
 
 export class EmptyExplorer {
   trackStep(step: string, ...args: any) { }
-  printQueryContext(queryContext: QueryContext, program: Program) { }
+  printQueryContext(queryContext: QueryContext) { }
   printProgram(program: Program) { }
 }
 
@@ -24,7 +24,8 @@ export class ConsoleExplorer implements IExplorer {
     console.log(`Step ${step}: ${args}`)
   }
 
-  printQueryContext(queryContext: QueryContext, program: Program) {
+  printQueryContext(queryContext: QueryContext) {
+    const { program: program } = queryContext;
     const cells =
       queryContext.heap.map((cell, index) => {
         const tag = extractTag(cell);

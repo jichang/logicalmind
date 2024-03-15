@@ -24,14 +24,8 @@ For example
 // fact that b is c's mother
 (mother (b c))
 
-// rule that A and A are couple if A is C's father and B is C's mother
+// rule that A and B are couple if A is C's father and B is C's mother
 (couple (A B)
-  (
-    (father (A C))
-    (mother (B C))
-  )
-)
-(couple
   (
     (father (A C))
     (mother (B C))

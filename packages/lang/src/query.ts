@@ -13,7 +13,6 @@ export interface Query {
 export class QueryContext {
   heap: number[] = [];
   frames: Frame[] = [];
-  clauses: Map<string, Clause[]> = new Map();
 
   constructor(public program: Program) { }
 
@@ -68,9 +67,6 @@ export class QueryContext {
 
     const relocatedClause = clause.relocate(offset)
 
-    const clauses = this.clauses.get(clause.key) || [];
-    this.clauses.set(clause.key, [...clauses, relocatedClause]);
-
     return relocatedClause;
   }
 
@@ -99,10 +95,18 @@ export class QueryContext {
   writeHeapCell(addr: number, cell: number) {
     this.heap[addr] = cell;
   }
+
+  exportClause(clause: Clause) {
+    const program = Program.empty();
+    program.cells = this.heap;
+    program.symbols = this.program.symbols;
+
+    return program.exportClause(clause);
+  }
 }
 
 export interface Answer {
   context: QueryContext;
+  targetClause: Clause;
   clause: Clause;
-  program: Program;
 }
